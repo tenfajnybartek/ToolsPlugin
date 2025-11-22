@@ -1,0 +1,6 @@
+homes:
+  max-per-player: 3      # Domyślny
+  rank-limits:
+    vip: 5    # tfbhc.homes.vip
+    mvp: 10   # tfbhc.homes.mvp
+    admin: 20 # tfbhc.homes.admin
