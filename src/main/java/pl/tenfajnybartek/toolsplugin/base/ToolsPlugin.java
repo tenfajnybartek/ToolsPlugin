@@ -94,7 +94,6 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new ListCommand());
         registerCommand(new WhoisCommand());
         registerCommand(new TPSCommand());
-
         registerCommand(new ChatCommand(chatManager));
     }
 
