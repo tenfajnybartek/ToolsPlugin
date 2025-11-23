@@ -1,5 +1,5 @@
 name: ToolsPlugin
-version: '0.0.1-SNAPSHOT'
+version: '1.0.0-SNAPSHOT'
 main: pl.tenfajnybartek.toolsplugin.base.ToolsPlugin
 api-version: '1.21'
 authors: [ tenfajnybartek ]
