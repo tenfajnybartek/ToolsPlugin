@@ -186,7 +186,19 @@ public class ConfigManager {
     public boolean cancelTeleportOnDamage() {
         return config.getBoolean("teleport.cancel-on-damage", true);
     }
+    public boolean isDebugEnabled() {
+        return config.getBoolean("settings.debug", false);
+    }
 
+    public String getDatabaseType() {
+        return config.getString("database.type", "mysql");
+    }
+
+    public String getDatabaseHost() { return config.getString("database.host", "localhost"); }
+    public int getDatabasePort() { return config.getInt("database.port", 3306); }
+    public String getDatabaseName() { return config.getString("database.database", "toolsplugin"); }
+    public String getDatabaseUser() { return config.getString("database.username", "root"); }
+    public String getDatabasePassword() { return config.getString("database.password", ""); }
 
     /**
      * Pobiera raw FileConfiguration (dla zaawansowanych)

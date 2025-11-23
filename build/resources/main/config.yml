@@ -1,0 +1,108 @@
+# ToolsPlugin Configuration
+# Wersja: 1.0.0
+
+# ===============================================
+# BAZA DANYCH MySQL
+# ===============================================
+database:
+  # Adres serwera MySQL
+  host: "localhost"
+
+  # Port MySQL (domyślnie 3306)
+  port: 3306
+
+  # Nazwa bazy danych
+  database: "toolsplugin"
+
+  # Nazwa użytkownika MySQL
+  username: "root"
+
+  # Hasło do MySQL
+  password: ""
+
+spawn:
+  # Te wartości zostaną wypełnione automatycznie po użyciu /setspawn
+  world: world
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
+
+settings:
+  # Prefix wyświetlany przed wiadomościami pluginu
+  prefix: "&8[&6ToolsPlugin&8] &r"
+
+  # Język pluginu (na przyszłość)
+  language: "pl"
+
+chat:
+  default-format: "%prefix%%player_name%%suffix%&f: &7%message%" # Zawsze używany jako fallback
+
+  custom-formats:
+    admin:
+      permission: "tfbhc.chat.format.admin"  # Priorytetowy format
+      format: "&4[A] %prefix%%player_name%%suffix%&4: &f%message%"
+    vip:
+      permission: "tfbhc.chat.format.vip"    # Drugi format
+      format: "&6[VIP] %prefix%%player_name%%suffix%&6: &e%message%"
+
+permissions:
+  # Uprawnienie do omijania cooldownów
+  bypass-cooldowns: "tfbhc.bypass.cooldown"
+
+# System cooldownów
+cooldowns:
+  # Czy cooldowny są włączone globalnie
+  enabled: true
+
+  # Cooldowny dla poszczególnych komend (w sekundach)
+  # 0 = brak cooldownu
+  commands:
+    heal: 30
+    feed: 20
+    tp: 5
+    fly: 0
+    god: 0
+    gamemode: 0
+    kill: 10
+    suicide: 60
+    burn: 15
+    smite: 15
+    repair: 45
+    enchant: 10
+    hat: 5
+    workbench: 3
+    anvil: 3
+    top: 10
+    warp: 5
+    home: 10
+    back: 5
+    sethome: 3
+    delhome: 0
+    spawn: 10
+    # Dodaj więcej komend tutaj...
+
+# Ustawienia teleportacji
+teleport:
+  # Czy sprawdzać bezpieczną lokalizację (nie w ścianie/lawie)
+  safe-teleport: true
+
+  # Opóźnienie teleportacji (w sekundach)
+  delay: 3
+
+  # Czy anulować teleportację przy ruchu gracza
+  cancel-on-move: true
+
+# Ustawienia systemu warpów (na przyszłość)
+warps:
+  enabled: true
+  max-per-player: 10
+
+# Ustawienia systemu home (na przyszłość)
+homes:
+  enabled: true
+  max-per-player: 3
+
+# Debug mode (wyświetla dodatkowe informacje w konsoli)
+debug: false
