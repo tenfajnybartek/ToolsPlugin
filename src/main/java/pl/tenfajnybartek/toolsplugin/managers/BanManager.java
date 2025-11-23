@@ -8,185 +8,290 @@ import pl.tenfajnybartek.toolsplugin.utils.TimeUnit;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.logging.Level;
 
 public class BanManager {
 
     private final ToolsPlugin plugin;
-    private final DatabaseManager db;
-    private final Pattern TIME_PATTERN = Pattern.compile("(\\d+)([smhdwya])");
-    private final String TABLE = "bans";
+    private final DatabaseManager databaseManager;
+
+    // s,m,h,d,w,y (sekundy, minuty, godziny, dni, tygodnie, lata)
+    private static final Pattern TIME_PATTERN = Pattern.compile("(\\d+)([smhdwy])", Pattern.CASE_INSENSITIVE);
+    private static final String TABLE = "bans";
 
     public BanManager(ToolsPlugin plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
-        this.db = databaseManager;
-        ensureTable();
+        this.databaseManager = databaseManager;
+        initializeTable(); // opcjonalne jeśli tabele tworzy DatabaseManager
     }
 
-    private void ensureTable() {
-        String sql = db.getType().equals("mysql")
-                ? "CREATE TABLE IF NOT EXISTS bans (" +
+    private void initializeTable() {
+        if (databaseManager.isDisabled()) {
+            plugin.getLogger().warning("Database disabled – pomijam tworzenie tabeli bans.");
+            return;
+        }
+        // Jeśli tworzone centralnie, usuń ten blok.
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS " + TABLE + " (" +
                 "id INT AUTO_INCREMENT PRIMARY KEY," +
                 "target_uuid VARCHAR(36) NOT NULL," +
                 "target_name VARCHAR(16) NOT NULL," +
                 "banner_uuid VARCHAR(36) NOT NULL," +
                 "banner_name VARCHAR(16) NOT NULL," +
-                "ban_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-                "expire_time TIMESTAMP NULL," +
+                "ban_time DATETIME NOT NULL," +
+                "expire_time DATETIME NULL," +
                 "reason TEXT NOT NULL," +
                 "active BOOLEAN NOT NULL DEFAULT TRUE," +
-                "INDEX (target_uuid), INDEX (active)" +
-                ")"
-                : "CREATE TABLE IF NOT EXISTS bans (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "target_uuid TEXT NOT NULL," +
-                "target_name TEXT NOT NULL," +
-                "banner_uuid TEXT NOT NULL," +
-                "banner_name TEXT NOT NULL," +
-                "ban_time INTEGER NOT NULL," +
-                "expire_time INTEGER NULL," +
-                "reason TEXT NOT NULL," +
-                "active INTEGER NOT NULL DEFAULT 1" +
+                "INDEX idx_target_uuid (target_uuid)," +
+                "INDEX idx_active (active)" +
                 ")";
-        db.executeUpdate(sql);
+        try (Connection connection = databaseManager.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.execute(createTableQuery);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia tabeli bans", e);
+        }
     }
 
+    // ---------------------------------------------------------------
+    // Parsowanie czasu (np. 1d2h30m -> LocalDateTime)
+    // ---------------------------------------------------------------
     public LocalDateTime parseTime(String timeString) {
-        if (timeString == null || timeString.equalsIgnoreCase("perm") || timeString.equalsIgnoreCase("permanent")) {
-            return null;
+        if (timeString == null ||
+                timeString.equalsIgnoreCase("perm") ||
+                timeString.equalsIgnoreCase("permanent")) {
+            return null; // permanentny
         }
+
         long totalSeconds = 0;
-        Matcher matcher = TIME_PATTERN.matcher(timeString.toLowerCase());
+        Matcher matcher = TIME_PATTERN.matcher(timeString.replace(" ", "").toLowerCase());
+
         while (matcher.find()) {
-            long value = Long.parseLong(matcher.group(1));
+            long value;
+            try {
+                value = Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException ignored) {
+                continue;
+            }
             String unit = matcher.group(2);
-            for (TimeUnit t : TimeUnit.values()) {
-                if (t.getShortcut().equals(unit)) {
-                    totalSeconds += value * t.getSeconds();
+            for (TimeUnit tu : TimeUnit.values()) {
+                if (tu.getShortcut().equalsIgnoreCase(unit)) {
+                    totalSeconds += value * tu.getSeconds();
                     break;
                 }
             }
         }
-        return totalSeconds <= 0 ? null : LocalDateTime.now().plusSeconds(totalSeconds);
+
+        if (totalSeconds <= 0) return null;
+        return LocalDateTime.now().plusSeconds(totalSeconds);
     }
 
-    public CompletableFuture<BanRecord> banPlayer(OfflinePlayer target, Player banner, String timeString, String reason) {
-        LocalDateTime expire = parseTime(timeString);
-        LocalDateTime now = LocalDateTime.now();
-        String finalReason = reason == null || reason.isEmpty() ? "Brak podanego powodu" : reason;
+    // ---------------------------------------------------------------
+    // Banowanie gracza
+    // ---------------------------------------------------------------
+    public CompletableFuture<BanRecord> banPlayer(OfflinePlayer target,
+                                                  Player banner,
+                                                  String timeString,
+                                                  String reason) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (databaseManager.isDisabled()) {
+                throw new CompletionException(new IllegalStateException("Baza danych wyłączona – nie można banować."));
+            }
 
-        // Najpierw dezaktywacja poprzednich
-        return db.updateAsync("UPDATE " + TABLE + " SET active=FALSE WHERE target_uuid=? AND active=TRUE",
-                target.getUniqueId().toString()
-        ).thenCompose(ignored -> {
-            // Wstaw nowy
-            String insertSqlMySql = "INSERT INTO " + TABLE + " (target_uuid, target_name, banner_uuid, banner_name, ban_time, expire_time, reason, active) VALUES (?,?,?,?,?,?,?,TRUE)";
-            String insertSqlSqlite = "INSERT INTO " + TABLE + " (target_uuid, target_name, banner_uuid, banner_name, ban_time, expire_time, reason, active) VALUES (?,?,?,?,?,?,?,1)";
-            boolean mysql = db.getType().equals("mysql");
-            return db.updateAsync(
-                    mysql ? insertSqlMySql : insertSqlSqlite,
-                    target.getUniqueId().toString(),
-                    target.getName(),
-                    banner.getUniqueId().toString(),
-                    banner.getName(),
-                    mysql ? Timestamp.valueOf(now) : now.toEpochSecond(java.time.ZoneOffset.UTC),
-                    expire == null ? null : (mysql ? Timestamp.valueOf(expire) : expire.toEpochSecond(java.time.ZoneOffset.UTC)),
-                    finalReason
-            ).thenApply(rows -> {
-                if (rows > 0) {
+            LocalDateTime expireTime = parseTime(timeString);
+            LocalDateTime banTime = LocalDateTime.now();
+            String resolvedReason = (reason == null || reason.isBlank()) ? "Brak podanego powodu" : reason.trim();
+            String targetName = safeName(target.getName(), target.getUniqueId());
+            String bannerName = safeName(banner.getName(), banner.getUniqueId());
+
+            try (Connection conn = databaseManager.getConnection()) {
+                // Deaktywuj poprzednie aktywne bany
+                try (PreparedStatement deactivate = conn.prepareStatement(
+                        "UPDATE " + TABLE + " SET active = FALSE WHERE target_uuid = ? AND active = TRUE")) {
+                    deactivate.setString(1, target.getUniqueId().toString());
+                    deactivate.executeUpdate();
+                }
+
+                String insert = "INSERT INTO " + TABLE +
+                        " (target_uuid, target_name, banner_uuid, banner_name, ban_time, expire_time, reason, active) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)";
+                try (PreparedStatement ps = conn.prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setString(1, target.getUniqueId().toString());
+                    ps.setString(2, targetName);
+                    ps.setString(3, banner.getUniqueId().toString());
+                    ps.setString(4, bannerName);
+                    ps.setTimestamp(5, Timestamp.valueOf(banTime));
+                    if (expireTime == null) {
+                        ps.setNull(6, Types.TIMESTAMP);
+                    } else {
+                        ps.setTimestamp(6, Timestamp.valueOf(expireTime));
+                    }
+                    ps.setString(7, resolvedReason);
+
+                    ps.executeUpdate();
+
+                    int id = -1;
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            id = rs.getInt(1);
+                        }
+                    }
+
                     return new BanRecord(
+                            id,
                             target.getUniqueId(),
-                            target.getName(),
+                            targetName,
                             banner.getUniqueId(),
-                            banner.getName(),
-                            now,
-                            expire,
-                            finalReason
+                            bannerName,
+                            banTime,
+                            expireTime,
+                            resolvedReason,
+                            true
                     );
                 }
-                return null;
-            });
-        });
+
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE,
+                        "Błąd podczas banowania gracza " + targetName + " (" + target.getUniqueId() + ")", e);
+                throw new CompletionException(e);
+            }
+        }, ToolsPlugin.getExecutor());
     }
 
+    // ---------------------------------------------------------------
+    // Odbanowanie
+    // ---------------------------------------------------------------
     public CompletableFuture<Boolean> unbanPlayer(UUID targetUuid) {
-        return db.updateAsync("UPDATE " + TABLE + " SET active=FALSE WHERE target_uuid=? AND active=TRUE",
-                targetUuid.toString()
-        ).thenApply(rows -> rows > 0);
+        return CompletableFuture.supplyAsync(() -> {
+            if (databaseManager.isDisabled()) return false;
+            String sql = "UPDATE " + TABLE + " SET active = FALSE WHERE target_uuid = ? AND active = TRUE";
+            try (Connection conn = databaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, targetUuid.toString());
+                return ps.executeUpdate() > 0;
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Błąd podczas odbanowywania gracza " + targetUuid, e);
+                return false;
+            }
+        }, ToolsPlugin.getExecutor());
     }
 
+    // ---------------------------------------------------------------
+    // Pobranie aktywnego bana
+    // ---------------------------------------------------------------
     public CompletableFuture<Optional<BanRecord>> getActiveBan(UUID targetUuid) {
-        String sql = db.getType().equals("mysql")
-                ? "SELECT * FROM " + TABLE + " WHERE target_uuid=? AND active=TRUE ORDER BY ban_time DESC LIMIT 1"
-                : "SELECT * FROM " + TABLE + " WHERE target_uuid=? AND active=1 ORDER BY ban_time DESC LIMIT 1";
+        return CompletableFuture.supplyAsync(() -> {
+            if (databaseManager.isDisabled()) return Optional.empty();
+            String sql = "SELECT * FROM " + TABLE +
+                    " WHERE target_uuid = ? AND active = TRUE ORDER BY ban_time DESC LIMIT 1";
 
-        return db.queryAsync(sql,
-                rs -> {
+            try (Connection conn = databaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, targetUuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
-                        BanRecord rec = map(rs);
-                        if (rec.hasExpired()) {
-                            // Dezaktywuj w tle
+                        BanRecord record = map(rs);
+                        if (record.hasExpired()) {
+                            // Fire & forget
                             unbanPlayer(targetUuid);
                             return Optional.empty();
                         }
-                        return Optional.of(rec);
+                        return Optional.of(record);
                     }
-                    return Optional.empty();
-                },
-                targetUuid.toString()
-        );
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Błąd podczas sprawdzania bana dla " + targetUuid, e);
+            }
+            return Optional.empty();
+        }, ToolsPlugin.getExecutor());
     }
 
+    // ---------------------------------------------------------------
+    // Wszystkie bany gracza
+    // ---------------------------------------------------------------
     public CompletableFuture<List<BanRecord>> getAllBans(UUID targetUuid) {
-        String sql = "SELECT * FROM " + TABLE + " WHERE target_uuid=? ORDER BY ban_time DESC";
-        return db.queryAsync(sql,
-                rs -> {
-                    List<BanRecord> list = new ArrayList<>();
+        return CompletableFuture.supplyAsync(() -> {
+            List<BanRecord> list = new ArrayList<>();
+            if (databaseManager.isDisabled()) return list;
+
+            String sql = "SELECT * FROM " + TABLE + " WHERE target_uuid = ? ORDER BY ban_time DESC";
+            try (Connection conn = databaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, targetUuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         list.add(map(rs));
                     }
-                    return list;
-                },
-                targetUuid.toString()
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Błąd podczas pobierania banów dla " + targetUuid, e);
+            }
+            return list;
+        }, ToolsPlugin.getExecutor());
+    }
+
+    // ---------------------------------------------------------------
+    // Dodatkowe pomocnicze
+    // ---------------------------------------------------------------
+    public CompletableFuture<Boolean> isCurrentlyBanned(UUID targetUuid) {
+        return getActiveBan(targetUuid).thenApply(Optional::isPresent);
+    }
+
+    public CompletableFuture<Integer> countActiveBans(UUID targetUuid) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (databaseManager.isDisabled()) return 0;
+            String sql = "SELECT COUNT(*) FROM " + TABLE + " WHERE target_uuid = ? AND active = TRUE";
+            try (Connection conn = databaseManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, targetUuid.toString());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) return rs.getInt(1);
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "Błąd countActiveBans dla " + targetUuid, e);
+            }
+            return 0;
+        }, ToolsPlugin.getExecutor());
+    }
+
+    // ---------------------------------------------------------------
+    // Mapowanie wiersza
+    // ---------------------------------------------------------------
+    private BanRecord map(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
+        UUID targetUuid = UUID.fromString(rs.getString("target_uuid"));
+        UUID bannerUuid = UUID.fromString(rs.getString("banner_uuid"));
+        String targetName = rs.getString("target_name");
+        String bannerName = rs.getString("banner_name");
+        String reason = rs.getString("reason");
+        boolean active = rs.getBoolean("active");
+
+        Timestamp banTs = rs.getTimestamp("ban_time");
+        Timestamp expTs = rs.getTimestamp("expire_time");
+        LocalDateTime banTime = banTs != null ? banTs.toLocalDateTime() : LocalDateTime.now();
+        LocalDateTime expireTime = expTs != null ? expTs.toLocalDateTime() : null;
+
+        return new BanRecord(
+                id,
+                targetUuid,
+                targetName,
+                bannerUuid,
+                bannerName,
+                banTime,
+                expireTime,
+                reason,
+                active
         );
     }
 
-    private BanRecord map(ResultSet rs) throws SQLException {
-        UUID targetUuid = UUID.fromString(rs.getString("target_uuid"));
-        UUID bannerUuid = UUID.fromString(rs.getString("banner_uuid"));
-        boolean mysql = db.getType().equals("mysql");
-
-        LocalDateTime banTime = mysql
-                ? rs.getTimestamp("ban_time").toLocalDateTime()
-                : LocalDateTime.ofEpochSecond(rs.getLong("ban_time"), 0, java.time.ZoneOffset.UTC);
-
-        LocalDateTime expireTime;
-        if (mysql) {
-            Timestamp ts = rs.getTimestamp("expire_time");
-            expireTime = ts == null ? null : ts.toLocalDateTime();
-        } else {
-            long raw = rs.getLong("expire_time");
-            expireTime = rs.wasNull() ? null : LocalDateTime.ofEpochSecond(raw, 0, java.time.ZoneOffset.UTC);
+    private String safeName(String raw, UUID uuid) {
+        if (raw == null || raw.isBlank()) {
+            return uuid.toString().substring(0, 8);
         }
-
-        boolean active = mysql ? rs.getBoolean("active") : rs.getInt("active") == 1;
-
-        return new BanRecord(
-                rs.getInt("id"),
-                targetUuid,
-                rs.getString("target_name"),
-                bannerUuid,
-                rs.getString("banner_name"),
-                banTime,
-                expireTime,
-                rs.getString("reason"),
-                active
-        );
+        return raw;
     }
 }

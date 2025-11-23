@@ -18,7 +18,7 @@ public class HelpopCommand extends BaseCommand {
         super(
                 "helpop",
                 "Wyślij zgłoszenie do administracji lub przełącz HelpOp",
-                "/helpop <wiadomość|on|off|reload>",
+                "/helpop <wiadomość>",
                 HelpopManager.PERM_SEND,
                 null
         );
@@ -33,7 +33,7 @@ public class HelpopCommand extends BaseCommand {
         }
 
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie: /helpop <wiadomość|on|off|reload>");
+            sendMessage(sender, "&cUżycie: /helpop <wiadomość>");
             return true;
         }
 
