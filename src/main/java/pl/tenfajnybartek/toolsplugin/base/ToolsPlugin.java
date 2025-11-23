@@ -31,6 +31,7 @@ public class ToolsPlugin extends JavaPlugin {
     private BanManager banManager;
     private DatabaseManager databaseManager;
     private UserManager userManager;
+    private HelpopManager helpopManager;
     private MessageManager messageManager;
 
     @Override
@@ -55,7 +56,7 @@ public class ToolsPlugin extends JavaPlugin {
         commandManager = new CommandManager(this);
         chatManager = new ChatManager(this, configManager, permissionManager);
         messageManager = new MessageManager(this, userManager);
-
+        helpopManager = new HelpopManager(this, configManager);
         registerCommands();
         registerListeners();
         startCooldownCleanupTask();
@@ -146,6 +147,7 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new UnMuteCommand());
         registerCommand(new SetSpawnCommand());
         registerCommand(new SpawnCommand());
+        registerCommand(new HelpopCommand());
     }
 
 
@@ -232,6 +234,9 @@ public class ToolsPlugin extends JavaPlugin {
     }
     public PermissionManager getPermissionManager() {
         return permissionManager;
+    }
+    public HelpopManager getHelpopManager() {
+        return helpopManager;
     }
 
     @Override
