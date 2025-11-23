@@ -18,6 +18,7 @@ public class ToolsPlugin extends JavaPlugin {
 
     private static ToolsPlugin instance;
     private PermissionManager permissionManager;
+    private ActionBarManager actionBarManager;
     private CommandManager commandManager;
     private LuckPerms luckPermsApi = null;
     private ChatManager chatManager;
@@ -44,6 +45,18 @@ public class ToolsPlugin extends JavaPlugin {
             return;
         }
         configManager = new ConfigManager(this);
+        actionBarManager = new ActionBarManager(
+                this,
+                10,          // 10 ticków = 0.5 s
+                true,        // show multiple ephemeral
+                3,           // max ephemeral
+                false,       // resendAlways (nie trzeba, bo pinned vanish wymusza send)
+                40,          // persistent heartbeat (gdy ephemeral obecne)
+                10,          // no ephemeral heartbeat (gdy brak ephemeral)
+                " | "        // separator
+        );
+        actionBarManager.start();
+        actionBarManager.start();
         cooldownManager = new CooldownManager(configManager);
         databaseManager = new DatabaseManager(this);
         this.permissionManager = new PermissionManager(this.getLuckPermsApi());
@@ -58,7 +71,7 @@ public class ToolsPlugin extends JavaPlugin {
         chatManager = new ChatManager(this, configManager, permissionManager);
         messageManager = new MessageManager(this, userManager);
         helpopManager = new HelpopManager(this, configManager);
-        vanishManager = new VanishManager(this);
+        vanishManager = new VanishManager(this, actionBarManager);
         registerCommands();
         registerListeners();
         startCooldownCleanupTask();
@@ -71,13 +84,12 @@ public class ToolsPlugin extends JavaPlugin {
         RegisteredServiceProvider<LuckPerms> providerLP = getServer().getServicesManager().getRegistration(LuckPerms.class);
         if (providerLP != null) {
             this.luckPermsApi = providerLP.getProvider();
-            getLogger().info("Pomyslnie zaladowano LuckPerms API.");
-            return true; // Zwracamy true, jeśli LuckPerms jest dostępny
+            getLogger().info("Pomyślnie zaladowano LuckPerms API.");
+            return true;
         } else {
             getLogger().severe("LuckPerms API nie zostalo znalezione. Jest wymagane do chatu.");
-            return false; // Zwracamy false, jeśli jest wymagany i brak
+            return false;
         }
-        // Usunięto cały blok inicjalizacji Vault
     }
 
     private void startCooldownCleanupTask() {
@@ -243,20 +255,20 @@ public class ToolsPlugin extends JavaPlugin {
         return helpopManager;
     }
     public VanishManager getVanishManager() { return vanishManager; }
-
+    public ActionBarManager getActionBarManager() { return actionBarManager; }
     @Override
     public void onDisable() {
-        // 1. Zapis wszystkich użytkowników synchronicznie (flush cache)
+
         if (userManager != null) {
             userManager.saveAllSyncOnShutdown();
+        }
+        if (actionBarManager != null) {
+
         }
         if (vanishManager != null) {
             vanishManager.clearAll();
         }
-        // 2. (Opcjonalnie) Anuluj wszystkie zadania Bukkit powiązane z tym pluginem
-        // Bukkit.getScheduler().cancelTasks(this);
 
-        // 3. Zatrzymanie własnego executora (nie będzie już potrzebny)
         if (this.asyncTaskExecutor != null && !this.asyncTaskExecutor.isShutdown()) {
             this.asyncTaskExecutor.shutdownNow();
         }

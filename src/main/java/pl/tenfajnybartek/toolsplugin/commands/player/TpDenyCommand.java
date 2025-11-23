@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
+import pl.tenfajnybartek.toolsplugin.managers.ActionBarManager;
 import pl.tenfajnybartek.toolsplugin.managers.TeleportManager;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 
@@ -22,7 +23,6 @@ public class TpDenyCommand extends BaseCommand {
 
         Player target = getPlayer(sender);
         TeleportManager tm = ToolsPlugin.getInstance().getTeleportManager();
-
         TeleportManager.TpaRequest request = tm.getTpaRequest(target);
 
         if (request == null) {
@@ -31,16 +31,21 @@ public class TpDenyCommand extends BaseCommand {
         }
 
         Player senderPlayer = Bukkit.getPlayer(request.getSenderId());
-
-        // Usunięcie prośby
         tm.removeTpaRequest(target);
 
-        // Powiadomienia dla odbiorcy (który odrzucił)
         sendMessage(target, "&cOdrzuciłeś prośbę o teleportację.");
-
-        // Powiadomienie dla nadawcy
         if (senderPlayer != null && senderPlayer.isOnline()) {
             sendMessage(senderPlayer, "&cGracz &e" + target.getName() + "&c odrzucił Twoją prośbę.");
+        }
+
+        ActionBarManager abm = ToolsPlugin.getInstance().getActionBarManager();
+        abm.pushEphemeral(target,
+                abm.colored("&cOdrzuciłeś TPA."),
+                40, ActionBarManager.ActionPriority.MEDIUM);
+        if (senderPlayer != null && senderPlayer.isOnline()) {
+            abm.pushEphemeral(senderPlayer,
+                    abm.colored("&cTPA odrzucone przez " + target.getName()),
+                    60, ActionBarManager.ActionPriority.LOW);
         }
 
         return true;

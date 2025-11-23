@@ -4,6 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
+import pl.tenfajnybartek.toolsplugin.managers.ActionBarManager;
+import pl.tenfajnybartek.toolsplugin.managers.ConfigManager;
 import pl.tenfajnybartek.toolsplugin.managers.TeleportManager;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 
@@ -24,8 +26,6 @@ public class TpAcceptCommand extends BaseCommand {
 
         Player target = getPlayer(sender);
         TeleportManager tm = ToolsPlugin.getInstance().getTeleportManager();
-
-        // Pobierz prośbę TPA (dla odbiorcy)
         TeleportManager.TpaRequest request = tm.getTpaRequest(target);
 
         if (request == null) {
@@ -42,19 +42,24 @@ public class TpAcceptCommand extends BaseCommand {
             return true;
         }
 
-        // Usunięcie prośby
         tm.removeTpaRequest(target);
 
-        // Powiadomienie nadawcy, że prośba została przyjęta
         sendMessage(senderPlayer, "&aTwoja prośba do &e" + target.getName() + "&a została zaakceptowana. Rozpoczynanie teleportacji...");
-
-        // Teleportacja (używamy standardowej metody teleport z delay).
-        // Wysłana jest prośba o teleportację SENDERa do TARGETa.
-        tm.teleport(senderPlayer, target.getLocation(), "&aTeleportacja do &e" + target.getName() + "&a zakończona sukcesem.");
-
-        // Powiadomienia dla odbiorcy
         sendMessage(target, "&aZaakceptowałeś prośbę. &e" + senderPlayer.getName() + "&a jest teleportowany do Ciebie.");
 
+        ConfigManager cfg = ToolsPlugin.getInstance().getConfigManager();
+        ActionBarManager abm = ToolsPlugin.getInstance().getActionBarManager();
+        int delay = cfg.getTeleportDelay();
+
+        abm.pushEphemeral(senderPlayer,
+                abm.colored("&aTPA zaakceptowane – teleport za &e" + delay + "s"),
+                60, ActionBarManager.ActionPriority.MEDIUM);
+        abm.pushEphemeral(target,
+                abm.colored("&aAkceptujesz TPA od &e" + senderPlayer.getName()),
+                40, ActionBarManager.ActionPriority.LOW);
+
+        tm.teleport(senderPlayer, target.getLocation(),
+                "&aTeleportacja do &e" + target.getName() + "&a zakończona sukcesem.");
         return true;
     }
 }
