@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 public class ToolsPlugin extends JavaPlugin {
 
     private static ToolsPlugin instance;
+    private LanguageManager languageManager;
     private PermissionManager permissionManager;
     private ActionBarManager actionBarManager;
     private CommandManager commandManager;
@@ -45,6 +46,7 @@ public class ToolsPlugin extends JavaPlugin {
             return;
         }
         configManager = new ConfigManager(this);
+        languageManager = new LanguageManager(this);
         actionBarManager = new ActionBarManager(
                 this,
                 10,          // 10 ticków = 0.5 s
@@ -253,6 +255,7 @@ public class ToolsPlugin extends JavaPlugin {
     public HelpopManager getHelpopManager() {
         return helpopManager;
     }
+    public LanguageManager getLanguageManager() { return languageManager; }
     public VanishManager getVanishManager() { return vanishManager; }
     public ActionBarManager getActionBarManager() { return actionBarManager; }
     @Override
