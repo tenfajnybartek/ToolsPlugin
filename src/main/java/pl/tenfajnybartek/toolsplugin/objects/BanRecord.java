@@ -15,9 +15,10 @@ public class BanRecord {
     private final String reason;
     private boolean active;
 
-    // Konstruktor dla NOWEGO bana
-    public BanRecord(UUID targetUuid, String targetName, UUID bannerUuid, String bannerName, LocalDateTime banTime, LocalDateTime expireTime, String reason) {
-        this.id = -1; // -1 oznacza, że ban nie ma jeszcze ID z bazy
+    // Konstruktor dla nowego bana
+    public BanRecord(UUID targetUuid, String targetName, UUID bannerUuid, String bannerName,
+                     LocalDateTime banTime, LocalDateTime expireTime, String reason) {
+        this.id = -1;
         this.targetUuid = targetUuid;
         this.targetName = targetName;
         this.bannerUuid = bannerUuid;
@@ -29,7 +30,8 @@ public class BanRecord {
     }
 
     // Konstruktor dla ładowania z bazy
-    public BanRecord(int id, UUID targetUuid, String targetName, UUID bannerUuid, String bannerName, LocalDateTime banTime, LocalDateTime expireTime, String reason, boolean active) {
+    public BanRecord(int id, UUID targetUuid, String targetName, UUID bannerUuid, String bannerName,
+                     LocalDateTime banTime, LocalDateTime expireTime, String reason, boolean active) {
         this.id = id;
         this.targetUuid = targetUuid;
         this.targetName = targetName;
@@ -41,6 +43,30 @@ public class BanRecord {
         this.active = active;
     }
 
+    public boolean isPermanent() {
+        return expireTime == null;
+    }
+
+    public boolean hasExpired() {
+        if (!active) return false;
+        if (isPermanent()) return false;
+        return expireTime.isBefore(LocalDateTime.now());
+    }
+
+    public boolean isActive() {
+        if (!active) return false;
+        if (isPermanent()) return true;
+        return !hasExpired();
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public boolean getActiveStatus() {
+        return active;
+    }
+
     // Gettery
     public int getId() { return id; }
     public UUID getTargetUuid() { return targetUuid; }
@@ -50,25 +76,4 @@ public class BanRecord {
     public LocalDateTime getBanTime() { return banTime; }
     public LocalDateTime getExpireTime() { return expireTime; }
     public String getReason() { return reason; }
-    public boolean isActive() { return active; }
-
-    // Settery
-    public void setActive(boolean active) { this.active = active; }
-
-    public boolean isPermanent() {
-        return expireTime == null;
-    }
-
-    public boolean hasExpired() {
-        // 1. Musi być aktywny
-        if (!active) {
-            return false;
-        }
-        // 2. Musi mieć czas wygaśnięcia (nie może być permanentny)
-        if (isPermanent()) {
-            return false;
-        }
-        // 3. Sprawdzenie czasu
-        return expireTime.isBefore(LocalDateTime.now());
-    }
 }

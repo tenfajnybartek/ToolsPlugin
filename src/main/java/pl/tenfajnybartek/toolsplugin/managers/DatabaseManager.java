@@ -6,7 +6,7 @@ import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
 
 import java.io.File;
 import java.sql.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -27,11 +27,23 @@ public class DatabaseManager {
     private final String password;
     private final boolean debug;
 
-    // MySQL: Hikari
     private HikariDataSource mysqlDataSource;
-
-    // SQLite: pojedyncze połączenie
     private Connection sqliteConnection;
+
+    // Dedykowany executor do zapytań async (możesz sterować wielkością)
+    private final ExecutorService dbExecutor =
+            new ThreadPoolExecutor(
+                    2,                // core
+                    6,                // max
+                    60L, TimeUnit.SECONDS,
+                    new LinkedBlockingQueue<>(512),
+                    r -> {
+                        Thread t = new Thread(r, "ToolsPlugin-DB");
+                        t.setDaemon(true);
+                        return t;
+                    },
+                    new ThreadPoolExecutor.CallerRunsPolicy() // w razie przepełnienia kolejki
+            );
 
     public DatabaseManager(ToolsPlugin plugin) {
         this.plugin = plugin;
@@ -84,14 +96,12 @@ public class DatabaseManager {
             cfg.setUsername(username);
             cfg.setPassword(password);
 
-            // Parametry puli
             cfg.setMaximumPoolSize(10);
             cfg.setMinimumIdle(2);
             cfg.setConnectionTimeout(30_000);
             cfg.setIdleTimeout(600_000);
             cfg.setMaxLifetime(1_800_000);
 
-            // Optymalizacje
             cfg.addDataSourceProperty("cachePrepStmts", "true");
             cfg.addDataSourceProperty("prepStmtCacheSize", "250");
             cfg.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -334,7 +344,7 @@ public class DatabaseManager {
     // ================= ASYNC =================
 
     public CompletableFuture<Integer> updateAsync(String sql, Object... params) {
-        return CompletableFuture.supplyAsync(() -> executeUpdate(sql, params));
+        return CompletableFuture.supplyAsync(() -> executeUpdate(sql, params), dbExecutor);
     }
 
     public <T> CompletableFuture<T> queryAsync(String sql, ResultSetMapper<T> mapper, Object... params) {
@@ -346,7 +356,7 @@ public class DatabaseManager {
                     throw new RuntimeException(e);
                 }
             }, params);
-        });
+        }, dbExecutor);
     }
 
     private void bindParams(PreparedStatement ps, Object... params) throws SQLException {
@@ -366,6 +376,7 @@ public class DatabaseManager {
     }
 
     public void disconnect() {
+        // Zamknięcie puli / połączenia
         if (type.equals("mysql")) {
             if (mysqlDataSource != null && !mysqlDataSource.isClosed()) {
                 mysqlDataSource.close();
@@ -380,6 +391,16 @@ public class DatabaseManager {
                     plugin.getLogger().log(Level.SEVERE, "Błąd przy zamykaniu SQLite!", e);
                 }
             }
+        }
+        // Zamknięcie executora
+        dbExecutor.shutdown();
+        try {
+            if (!dbExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                dbExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            dbExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
