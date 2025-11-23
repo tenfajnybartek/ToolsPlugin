@@ -2,18 +2,15 @@
 # ToolsPlugin Configuration
 # Wersja: 1.0.0
 # ============================================
-# UWAGA: Jeśli używasz GitHuba publicznie – rozważ przeniesienie danych
-# dostępowych do bazy poza repo (environment variables / osobny plik ignorowany).
-# ============================================
+
 
 database:
-  # Typ bazy (opcjonalnie, jeśli w przyszłości dodasz wsparcie dla innych)
-  type: "mysql"
-  host: "localhost"
-  port: 3306
+  type: "mysql"     # albo "sqlite"
+  host: "localhost" # ignorowane przy sqlite
+  port: 3306        # ignorowane przy sqlite
   database: "toolsplugin"
-  username: "root"
-  password: ""
+  username: "root"  # ignorowane przy sqlite
+  password: ""      # ignorowane przy sqlite
 
 settings:
   prefix: "&8[&6ToolsPlugin&8] &r"
