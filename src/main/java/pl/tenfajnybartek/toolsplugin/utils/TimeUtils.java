@@ -24,7 +24,7 @@ public class TimeUtils {
             return null;
         }
         long durationSeconds = 0;
-        Pattern pattern = Pattern.compile("(\d+)([a-zA-Z])");
+        Pattern pattern = Pattern.compile("(\\d+)([a-zA-Z])");
         Matcher matcher = pattern.matcher(timeString);
         while (matcher.find()) {
             long value = Long.parseLong(matcher.group(1));
@@ -36,7 +36,7 @@ public class TimeUtils {
                 case "d": durationSeconds += value * 86400; break;
                 case "w": durationSeconds += value * 604800; break;
                 case "y": durationSeconds += value * 31536000; break;
-                default: return null;
+                default: return null; // nieznana jednostka => null
             }
         }
         if (durationSeconds <= 0) return null;

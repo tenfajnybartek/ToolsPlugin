@@ -33,6 +33,7 @@ public class ToolsPlugin extends JavaPlugin {
     private UserManager userManager;
     private HelpopManager helpopManager;
     private MessageManager messageManager;
+    private VanishManager vanishManager;
 
     @Override
     public void onEnable() {
@@ -57,6 +58,7 @@ public class ToolsPlugin extends JavaPlugin {
         chatManager = new ChatManager(this, configManager, permissionManager);
         messageManager = new MessageManager(this, userManager);
         helpopManager = new HelpopManager(this, configManager);
+        vanishManager = new VanishManager(this);
         registerCommands();
         registerListeners();
         startCooldownCleanupTask();
@@ -148,6 +150,7 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new SetSpawnCommand());
         registerCommand(new SpawnCommand());
         registerCommand(new HelpopCommand());
+        registerCommand(new VanishCommand());
     }
 
 
@@ -157,6 +160,7 @@ public class ToolsPlugin extends JavaPlugin {
         registerListener(new UserListener(userManager, homeManager));
         registerListener(new BanListener(banManager));
         registerListener(new MuteListener(muteManager, this));
+        registerListener(new VanishListener(vanishManager));
     }
 
     public static void registerListener(Listener listener) {
@@ -238,6 +242,7 @@ public class ToolsPlugin extends JavaPlugin {
     public HelpopManager getHelpopManager() {
         return helpopManager;
     }
+    public VanishManager getVanishManager() { return vanishManager; }
 
     @Override
     public void onDisable() {
@@ -245,7 +250,9 @@ public class ToolsPlugin extends JavaPlugin {
         if (userManager != null) {
             userManager.saveAllSyncOnShutdown();
         }
-
+        if (vanishManager != null) {
+            vanishManager.clearAll();
+        }
         // 2. (Opcjonalnie) Anuluj wszystkie zadania Bukkit powiązane z tym pluginem
         // Bukkit.getScheduler().cancelTasks(this);
 
