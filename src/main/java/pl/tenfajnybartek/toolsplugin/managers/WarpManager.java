@@ -19,192 +19,134 @@ import java.util.logging.Level;
 public class WarpManager {
 
     private final ToolsPlugin plugin;
-    // Usunięto warpsFile i warpsConfig
-    private final DatabaseManager dbManager; // DODANO
+    private final DatabaseManager db;
+    private final Map<String, Location> cache = new HashMap<>();
     private final String TABLE = "server_warps";
 
-    // Mapa warpów: nazwa -> lokalizacja (CACHE)
-    private final Map<String, Location> warps;
-
-    public WarpManager(ToolsPlugin plugin, DatabaseManager dbManager) { // ZMIENIONO KONSTRUKTOR
+    public WarpManager(ToolsPlugin plugin, DatabaseManager dbManager) {
         this.plugin = plugin;
-        this.dbManager = dbManager;
-        this.warps = new HashMap<>();
-
-        initializeTable();
-        loadWarps(); // Asynchroniczne ładowanie na starcie
+        this.db = dbManager;
+        ensureTable();      // Dodatkowe zabezpieczenie (tabela i tak tworzona w DatabaseManager)
+        loadWarpsAsync();   // Asynchroniczne ładowanie cache
     }
 
-    // ====================================================================
-    // 1. Inicjalizacja Bazy Danych
-    // ====================================================================
-    private void initializeTable() {
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS " + TABLE + " (" +
-                "warp_name VARCHAR(64) PRIMARY KEY," +
-                "world_name VARCHAR(64) NOT NULL," +
-                "x DOUBLE NOT NULL," +
-                "y DOUBLE NOT NULL," +
-                "z DOUBLE NOT NULL," +
-                "yaw FLOAT NOT NULL," +
-                "pitch FLOAT NOT NULL" +
+    private void ensureTable() {
+        // Dublowanie CREATE TABLE jeśli ktoś wyłączył jego tworzenie w DatabaseManager – harmless
+        String sql = "CREATE TABLE IF NOT EXISTS " + TABLE + " (" +
+                "warp_name " + (db.getType().equals("mysql") ? "VARCHAR(64)" : "TEXT") + " PRIMARY KEY," +
+                "world_name " + (db.getType().equals("mysql") ? "VARCHAR(64)" : "TEXT") + " NOT NULL," +
+                "x " + (db.getType().equals("mysql") ? "DOUBLE" : "REAL") + " NOT NULL," +
+                "y " + (db.getType().equals("mysql") ? "DOUBLE" : "REAL") + " NOT NULL," +
+                "z " + (db.getType().equals("mysql") ? "DOUBLE" : "REAL") + " NOT NULL," +
+                "yaw " + (db.getType().equals("mysql") ? "FLOAT" : "REAL") + " NOT NULL," +
+                "pitch " + (db.getType().equals("mysql") ? "FLOAT" : "REAL") + " NOT NULL" +
                 ")";
-
-        try (Connection connection = dbManager.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute(createTableQuery);
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia tabeli " + TABLE, e);
-        }
+        db.executeUpdate(sql);
     }
 
-    // ====================================================================
-    // 2. Ładowanie Warpów (Asynchroniczne)
-    // ====================================================================
-
     /**
-     * Ładuje warpy z DB do cache asynchronicznie. Wywoływane przy starcie.
+     * Ładuje wszystkie warpy do pamięci (cache) asynchronicznie.
      */
-    public CompletableFuture<Void> loadWarps() {
-        return CompletableFuture.runAsync(() -> {
-            warps.clear();
-            String sqlSelect = "SELECT * FROM " + TABLE;
-
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sqlSelect);
-                 ResultSet rs = ps.executeQuery()) {
-
-                int loadedCount = 0;
-                while (rs.next()) {
-                    Location location = mapResultSetToLocation(rs);
-                    String warpName = rs.getString("warp_name").toLowerCase();
-
-                    if (location != null) {
-                        warps.put(warpName, location);
-                        loadedCount++;
+    public void loadWarpsAsync() {
+        db.queryAsync("SELECT warp_name, world_name, x, y, z, yaw, pitch FROM " + TABLE,
+                rs -> {
+                    Map<String, Location> temp = new HashMap<>();
+                    while (rs.next()) {
+                        String name = rs.getString("warp_name").toLowerCase();
+                        String world = rs.getString("world_name");
+                        if (Bukkit.getWorld(world) == null) {
+                            plugin.getLogger().warning("Świat '" + world + "' dla warpa '" + name + "' nie istnieje – pomijam.");
+                            continue;
+                        }
+                        Location loc = new Location(
+                                Bukkit.getWorld(world),
+                                rs.getDouble("x"),
+                                rs.getDouble("y"),
+                                rs.getDouble("z"),
+                                rs.getFloat("yaw"),
+                                rs.getFloat("pitch")
+                        );
+                        temp.put(name, loc);
                     }
+                    return temp;
                 }
-                plugin.getLogger().info("Załadowano " + loadedCount + " warpów z DB!");
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas ładowania warpów z bazy danych!", e);
-            }
-        }, ToolsPlugin.getExecutor());
-    }
-
-    // Usunięto saveWarps() - niepotrzebne przy natychmiastowym zapisie do DB
-
-    // ====================================================================
-    // 3. Logika Warpów (Asynchroniczna)
-    // ====================================================================
-
-    /**
-     * Tworzy nowy warp w DB asynchronicznie.
-     */
-    public CompletableFuture<Boolean> createWarp(String name, Location location) {
-        String lowerName = name.toLowerCase();
-
-        if (warps.containsKey(lowerName)) {
-            return CompletableFuture.completedFuture(false); // Warp już istnieje w cache
-        }
-
-        // INSERT z użyciem ON DUPLICATE KEY UPDATE dla uniknięcia wyjątków
-        String sqlInsert = "INSERT INTO " + TABLE +
-                " (warp_name, world_name, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-        return CompletableFuture.supplyAsync(() -> {
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sqlInsert)) {
-
-                // Ustawianie 7 parametrów
-                ps.setString(1, lowerName);
-                ps.setString(2, location.getWorld().getName());
-                ps.setDouble(3, location.getX());
-                ps.setDouble(4, location.getY());
-                ps.setDouble(5, location.getZ());
-                ps.setFloat(6, location.getYaw());
-                ps.setFloat(7, location.getPitch());
-
-                if (ps.executeUpdate() > 0) {
-                    warps.put(lowerName, location); // Aktualizacja cache
-                    return true;
-                }
-                return false;
-            } catch (SQLException e) {
-                // To powinno obsłużyć głównie wyjątki UNIQUE KEY, jeśli cache zawiedzie
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia warpa: " + lowerName, e);
-                return false;
-            }
-        }, ToolsPlugin.getExecutor());
+        ).thenAccept(result -> Bukkit.getScheduler().runTask(plugin, () -> {
+            cache.clear();
+            cache.putAll(result);
+            plugin.getLogger().info("Załadowano " + cache.size() + " warpów.");
+        })).exceptionally(ex -> {
+            plugin.getLogger().log(Level.SEVERE, "Błąd ładowania warpów async!", ex);
+            return null;
+        });
     }
 
     /**
-     * Usuwa warp z DB asynchronicznie.
+     * Tworzy warp asynchronicznie.
      */
-    public CompletableFuture<Boolean> deleteWarp(String name) {
-        String lowerName = name.toLowerCase();
-
-        if (!warps.containsKey(lowerName)) {
-            return CompletableFuture.completedFuture(false); // Warp nie istnieje w cache
+    public CompletableFuture<Boolean> createWarpAsync(String name, Location loc) {
+        String key = name.toLowerCase();
+        if (cache.containsKey(key)) {
+            return CompletableFuture.completedFuture(false);
         }
 
-        String sqlDelete = "DELETE FROM " + TABLE + " WHERE warp_name = ?";
-
-        return CompletableFuture.supplyAsync(() -> {
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sqlDelete)) {
-
-                ps.setString(1, lowerName);
-
-                if (ps.executeUpdate() > 0) {
-                    warps.remove(lowerName); // Usunięcie z cache
-                    return true;
-                }
-                return false;
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas usuwania warpa: " + lowerName, e);
-                return false;
+        return db.updateAsync(
+                "INSERT INTO " + TABLE + " (warp_name, world_name, x, y, z, yaw, pitch) VALUES (?,?,?,?,?,?,?)",
+                key,
+                loc.getWorld().getName(),
+                loc.getX(),
+                loc.getY(),
+                loc.getZ(),
+                loc.getYaw(),
+                loc.getPitch()
+        ).thenApply(rows -> {
+            if (rows > 0) {
+                Bukkit.getScheduler().runTask(plugin, () -> cache.put(key, loc));
+                return true;
             }
-        }, ToolsPlugin.getExecutor());
+            return false;
+        }).exceptionally(ex -> {
+            plugin.getLogger().log(Level.SEVERE, "Błąd tworzenia warpa '" + key + "'", ex);
+            return false;
+        });
     }
 
-    // ====================================================================
-    // 4. Metody Odczytu (Synchroniczne z Cache)
-    // ====================================================================
+    /**
+     * Usuwa warp asynchronicznie.
+     */
+    public CompletableFuture<Boolean> deleteWarpAsync(String name) {
+        String key = name.toLowerCase();
+        if (!cache.containsKey(key)) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        return db.updateAsync("DELETE FROM " + TABLE + " WHERE warp_name = ?", key)
+                .thenApply(rows -> {
+                    if (rows > 0) {
+                        Bukkit.getScheduler().runTask(plugin, () -> cache.remove(key));
+                        return true;
+                    }
+                    return false;
+                }).exceptionally(ex -> {
+                    plugin.getLogger().log(Level.SEVERE, "Błąd usuwania warpa '" + key + "'", ex);
+                    return false;
+                });
+    }
+
+    // ======= Odczyt z cache (szybki, synchroniczny) =======
 
     public Location getWarp(String name) {
-        return warps.get(name.toLowerCase());
+        return cache.get(name.toLowerCase());
     }
 
     public boolean warpExists(String name) {
-        return warps.containsKey(name.toLowerCase());
+        return cache.containsKey(name.toLowerCase());
     }
 
     public Set<String> getWarpNames() {
-        return new HashSet<>(warps.keySet());
+        return new HashSet<>(cache.keySet());
     }
 
     public int getWarpCount() {
-        return warps.size();
-    }
-
-    // ====================================================================
-    // 5. Metody Pomocnicze
-    // ====================================================================
-
-    private Location mapResultSetToLocation(ResultSet rs) throws SQLException {
-        String worldName = rs.getString("world_name");
-
-        if (worldName == null || Bukkit.getWorld(worldName) == null) {
-            plugin.getLogger().warning("Błąd: Świat '" + worldName + "' nie istnieje dla warpa!");
-            return null;
-        }
-
-        return new Location(
-                Bukkit.getWorld(worldName),
-                rs.getDouble("x"),
-                rs.getDouble("y"),
-                rs.getDouble("z"),
-                rs.getFloat("yaw"),
-                rs.getFloat("pitch")
-        );
+        return cache.size();
     }
 }

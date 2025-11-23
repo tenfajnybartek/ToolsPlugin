@@ -14,7 +14,6 @@ import java.util.UUID;
 public class ReplyCommand extends BaseCommand {
 
     public ReplyCommand() {
-        // Użycie: /r <wiadomość> (alias "r")
         super("reply", "Odpowiada ostatniemu rozmówcy", "/r <wiadomość>", "tools.msg", new String[]{"r"});
     }
 
@@ -26,7 +25,6 @@ public class ReplyCommand extends BaseCommand {
         }
 
         if (args.length == 0) {
-            // Wyświetlenie prawidłowego użycia komendy
             sendMessage(sender, "&cUżycie: " + getUsage());
             return true;
         }
@@ -40,38 +38,27 @@ public class ReplyCommand extends BaseCommand {
             return true;
         }
 
-        // 1. Sprawdzenie, czy jest odbiorca /reply
         UUID lastTargetUuid = user.getLastMessageFrom();
-
         if (lastTargetUuid == null) {
             sendMessage(player, "&cNie masz komu odpisać. Nikt do Ciebie ostatnio nie pisał.");
             return true;
         }
 
-        // 2. Pobranie gracza-odbiorcy (ostatniego rozmówcy)
         Player target = Bukkit.getPlayer(lastTargetUuid);
-
         if (target == null || !target.isOnline()) {
             sendMessage(player, "&cTwój ostatni rozmówca jest offline.");
-
-            // Czyszczenie pola /reply i zapis asynchroniczny
             user.setLastMessageFrom(null);
-            userManager.saveUser(user, false);
+            userManager.saveUserAsync(user); // NOWE
             return true;
         }
 
-        // 3. Budowanie wiadomości (Użycie String.join jest czyste i poprawne)
-        String message = String.join(" ", args);
-
-        // 4. Wysyłanie przez MessageManager
-        MessageManager messageManager = ToolsPlugin.getInstance().getMessageManager();
-
-        // Zabezpieczenie przed pisaniem do samego siebie, choć to mało prawdopodobne w /r
         if (target.equals(player)) {
             sendMessage(player, "&cNie możesz wysłać wiadomości sam do siebie.");
             return true;
         }
 
+        String message = String.join(" ", args);
+        MessageManager messageManager = ToolsPlugin.getInstance().getMessageManager();
         messageManager.sendPrivateMessage(player, target, message);
 
         return true;

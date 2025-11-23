@@ -44,7 +44,7 @@ public class SetWarpCommand extends BaseCommand {
         Location location = player.getLocation();
 
         // 2. Wywołaj asynchroniczną operację tworzenia warpa
-        CompletableFuture<Boolean> future = warpManager.createWarp(warpName, location);
+        CompletableFuture<Boolean> future = warpManager.createWarpAsync(warpName, location);
 
         // 3. Obsługa wyniku na wątku głównym
         future.thenAccept(success -> {

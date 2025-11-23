@@ -40,7 +40,7 @@ public class DelWarpCommand extends BaseCommand {
         }
 
         // 2. Wywołaj asynchroniczną operację usuwania warpa
-        CompletableFuture<Boolean> future = warpManager.deleteWarp(warpName);
+        CompletableFuture<Boolean> future = warpManager.deleteWarpAsync(warpName);
 
         // 3. Obsługa wyniku na wątku głównym
         future.thenAccept(success -> {

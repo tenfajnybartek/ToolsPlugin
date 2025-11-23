@@ -17,22 +17,19 @@ import java.util.logging.Level;
 
 public class UserManager {
     private final ToolsPlugin plugin;
-    private final DatabaseManager databaseManager;
+    private final DatabaseManager db;
 
-    private final Map<UUID, User> users;
+    private final Map<UUID, User> cache = new HashMap<>();
 
     public UserManager(ToolsPlugin plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
-        this.databaseManager = databaseManager;
-        this.users = new HashMap<>();
-        initializeTable(); // DODANO: Inicjalizacja tabeli przy starcie
+        this.db = databaseManager;
+        ensureTable();
     }
 
-    /**
-     * Inicjalizuje tabelę 'users' w bazie danych.
-     */
-    private void initializeTable() {
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS users (" +
+    private void ensureTable() {
+        String sql = db.getType().equals("mysql")
+                ? "CREATE TABLE IF NOT EXISTS users (" +
                 "uuid VARCHAR(36) PRIMARY KEY," +
                 "name VARCHAR(16) NOT NULL," +
                 "ip VARCHAR(45) NOT NULL," +
@@ -44,219 +41,190 @@ public class UserManager {
                 "msg_toggle BOOLEAN NOT NULL DEFAULT TRUE," +
                 "social_spy BOOLEAN NOT NULL DEFAULT FALSE," +
                 "INDEX (name)" +
+                ")"
+                : "CREATE TABLE IF NOT EXISTS users (" +
+                "uuid TEXT PRIMARY KEY," +
+                "name TEXT NOT NULL," +
+                "ip TEXT NOT NULL," +
+                "first_join INTEGER NOT NULL," +
+                "last_join INTEGER NOT NULL," +
+                "last_quit INTEGER NOT NULL," +
+                "last_message_from TEXT," +
+                "teleport_toggle INTEGER NOT NULL DEFAULT 1," +
+                "msg_toggle INTEGER NOT NULL DEFAULT 1," +
+                "social_spy INTEGER NOT NULL DEFAULT 0" +
                 ")";
-        try (Connection connection = databaseManager.getConnection();
-             PreparedStatement statement = connection.prepareStatement(createTableQuery)) {
-            statement.execute();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia tabeli users!", e);
-        }
+        db.executeUpdate(sql);
     }
 
-
     /**
-     * Ładuje użytkownika z bazy danych asynchronicznie, używając ExecutorService.
+     * Ładuje (lub tworzy) użytkownika asynchronicznie.
      */
     public void loadUser(Player player) {
         UUID uuid = player.getUniqueId();
         String name = player.getName();
         String ip = player.getAddress() != null ? player.getAddress().getAddress().getHostAddress() : "unknown";
 
-        // ASYNCHRONICZNE POBIERANIE DANYCH Z DB
-        CompletableFuture.supplyAsync(() -> {
-                    try (Connection conn = databaseManager.getConnection()) {
-                        String query = "SELECT * FROM users WHERE uuid = ?";
-                        PreparedStatement stmt = conn.prepareStatement(query);
-                        stmt.setString(1, uuid.toString());
+        db.queryAsync("SELECT * FROM users WHERE uuid=? LIMIT 1",
+                rs -> {
+                    if (rs.next()) {
+                        long firstJoin = rs.getLong("first_join");
+                        long lastJoin = rs.getLong("last_join");
+                        long lastQuit = rs.getLong("last_quit");
+                        String lastMsgUuid = rs.getString("last_message_from");
+                        UUID lastMessageFrom = lastMsgUuid != null ? UUID.fromString(lastMsgUuid) : null;
 
-                        ResultSet rs = stmt.executeQuery();
+                        boolean tpToggle = getBool(rs, "teleport_toggle");
+                        boolean msgToggle = getBool(rs, "msg_toggle");
+                        boolean socialSpy = getBool(rs, "social_spy");
 
-                        if (rs.next()) {
-                            // Gracz istnieje w bazie - załaduj dane
-                            long firstJoin = rs.getLong("first_join");
-                            long lastJoin = rs.getLong("last_join");
-                            long lastQuit = rs.getLong("last_quit");
-                            String lastMsgUuid = rs.getString("last_message_from");
-                            UUID lastMessageFrom = lastMsgUuid != null ? UUID.fromString(lastMsgUuid) : null;
-
-                            boolean tpToggle = rs.getBoolean("teleport_toggle");
-                            boolean msgToggle = rs.getBoolean("msg_toggle");
-                            boolean socialSpy = rs.getBoolean("social_spy");
-
-                            // Użycie Konstruktora B
-                            User user = new User(uuid, name, ip, firstJoin, lastJoin, lastQuit, lastMessageFrom, tpToggle, msgToggle, socialSpy);
-
-                            // Aktualizacje danych nie wpływające na DB, ale na stan obiektowy
-                            user.updateLastJoin();
-                            user.setIp(ip);
-                            user.setName(name);
-
-                            return user;
-
-                        } else {
-                            // Nowy gracz - utwórz
-                            User user = new User(uuid, name, ip);
-                            plugin.getLogger().info("Utworzono nowego użytkownika: " + name);
-                            return user;
-                        }
-
-                    } catch (SQLException e) {
-                        plugin.getLogger().log(Level.SEVERE, "Błąd podczas ładowania użytkownika: " + name, e);
-                        return null;
+                        User user = new User(uuid, name, ip, firstJoin, lastJoin, lastQuit, lastMessageFrom, tpToggle, msgToggle, socialSpy);
+                        // Aktualizujemy dane w pamięci (ostatnie wejście + ip + nazwa)
+                        user.updateLastJoin();
+                        user.setIp(ip);
+                        user.setName(name);
+                        return user;
+                    } else {
+                        // Nowy użytkownik
+                        return new User(uuid, name, ip);
                     }
-                }, ToolsPlugin.getExecutor()) // Używamy naszego Executora
-                .thenAccept(user -> {
-                    // SYNCHRONICZNE UMIESZCZENIE W MAPIE i ZAPIS
-                    if (user != null) {
-                        plugin.getServer().getScheduler().runTask(plugin, () -> {
-                            users.put(uuid, user);
-                            // Zapis asynchroniczny po załadowaniu (dla nowych graczy/pól)
-                            saveUser(user, false);
-                        });
-                    }
+                },
+                uuid.toString()
+        ).thenAccept(user -> {
+            if (user != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    cache.put(uuid, user);
+                    // Zapis asynchroniczny (nie blokuje wątku głównego)
+                    saveUserAsync(user);
                 });
+            }
+        });
     }
 
     /**
-     * Zapisuje użytkownika do bazy danych
-     * @param user Użytkownik do zapisania
-     * @param isShutdownSave true, jeśli jest to wywołanie podczas wyłączania (wymusza zapis synchroniczny)
+     * Zapis użytkownika asynchronicznie (INSERT/UPDATE).
      */
-    public void saveUser(User user, boolean isShutdownSave) {
-        if (isShutdownSave) {
-            // SYNCHRONICZNY ZAPIS (WYMAGANY PRZY SHUTDOWN)
-            executeSaveLogic(user);
+    public void saveUserAsync(User user) {
+        String sql = "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE " +
+                "name=VALUES(name), ip=VALUES(ip), last_join=VALUES(last_join), last_quit=VALUES(last_quit), " +
+                "last_message_from=VALUES(last_message_from), teleport_toggle=VALUES(teleport_toggle), msg_toggle=VALUES(msg_toggle), social_spy=VALUES(social_spy)";
+
+        // Dla SQLite nie ma ON DUPLICATE KEY UPDATE – fallback:
+        if (db.getType().equals("sqlite")) {
+            // Najpierw próbujemy UPDATE, potem jeśli 0 – INSERT
+            String updateSql = "UPDATE users SET name=?, ip=?, last_join=?, last_quit=?, last_message_from=?, teleport_toggle=?, msg_toggle=?, social_spy=? WHERE uuid=?";
+            db.updateAsync(updateSql,
+                    user.getName(),
+                    user.getIp(),
+                    user.getLastJoin(),
+                    user.getLastQuit(),
+                    user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null,
+                    user.isTeleportToggle() ? 1 : 0,
+                    user.isMsgToggle() ? 1 : 0,
+                    user.isSocialSpy() ? 1 : 0,
+                    user.getUuid().toString()
+            ).thenCompose(rows -> {
+                if (rows > 0) return CompletableFuture.completedFuture(rows);
+                // Insert
+                String insertSql = "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) VALUES (?,?,?,?,?,?,?,?,?,?)";
+                return db.updateAsync(insertSql,
+                        user.getUuid().toString(),
+                        user.getName(),
+                        user.getIp(),
+                        user.getFirstJoin(),
+                        user.getLastJoin(),
+                        user.getLastQuit(),
+                        user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null,
+                        user.isTeleportToggle() ? 1 : 0,
+                        user.isMsgToggle() ? 1 : 0,
+                        user.isSocialSpy() ? 1 : 0
+                );
+            });
         } else {
-            // ASYNCHRONICZNY ZAPIS, używamy Executora
-            CompletableFuture.runAsync(() -> executeSaveLogic(user), ToolsPlugin.getExecutor());
+            db.updateAsync(sql,
+                    user.getUuid().toString(),
+                    user.getName(),
+                    user.getIp(),
+                    user.getFirstJoin(),
+                    user.getLastJoin(),
+                    user.getLastQuit(),
+                    user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null,
+                    user.isTeleportToggle(),
+                    user.isMsgToggle(),
+                    user.isSocialSpy()
+            );
         }
     }
-
-    /**
-     * Logika zapisu do bazy danych
-     */
-    private void executeSaveLogic(User user) {
-        try (Connection conn = databaseManager.getConnection()) {
-            String query = "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                    "ON DUPLICATE KEY UPDATE " +
-                    "name = VALUES(name), " +
-                    "ip = VALUES(ip), " +
-                    "last_join = VALUES(last_join), " +
-                    "last_quit = VALUES(last_quit), " +
-                    "last_message_from = VALUES(last_message_from), " +
-                    "teleport_toggle = VALUES(teleport_toggle), " +
-                    "msg_toggle = VALUES(msg_toggle), " +
-                    "social_spy = VALUES(social_spy)";
-
-            PreparedStatement stmt = conn.prepareStatement(query);
-            stmt.setString(1, user.getUuid().toString());
-            stmt.setString(2, user.getName());
-            stmt.setString(3, user.getIp());
-            stmt.setLong(4, user.getFirstJoin());
-            stmt.setLong(5, user.getLastJoin());
-            stmt.setLong(6, user.getLastQuit());
-
-            // Last Message From
-            stmt.setString(7, user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null);
-
-            // Pola Boolean
-            stmt.setBoolean(8, user.isTeleportToggle());
-            stmt.setBoolean(9, user.isMsgToggle());
-            stmt.setBoolean(10, user.isSocialSpy());
-
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Błąd podczas zapisywania użytkownika: " + user.getName(), e);
-        }
-    }
-
-    /**
-     * Pobiera użytkownika z DB po nazwie. Używa callback do zwrócenia wyniku na wątku głównym.
-     */
-    public void getUserByName(String name, UserCallback callback) {
-        // ASYNCHRONICZNE POBIERANIE
-        CompletableFuture.supplyAsync(() -> {
-                    try (Connection conn = databaseManager.getConnection()) {
-                        String query = "SELECT * FROM users WHERE name = ? ORDER BY last_join DESC LIMIT 1";
-                        PreparedStatement stmt = conn.prepareStatement(query);
-                        stmt.setString(1, name);
-
-                        ResultSet rs = stmt.executeQuery();
-
-                        if (rs.next()) {
-                            UUID uuid = UUID.fromString(rs.getString("uuid"));
-                            String ip = rs.getString("ip");
-                            long firstJoin = rs.getLong("first_join");
-                            long lastJoin = rs.getLong("last_join");
-                            long lastQuit = rs.getLong("last_quit");
-                            String lastMsgUuid = rs.getString("last_message_from");
-                            UUID lastMessageFrom = lastMsgUuid != null ? UUID.fromString(lastMsgUuid) : null;
-
-                            boolean tpToggle = rs.getBoolean("teleport_toggle");
-                            boolean msgToggle = rs.getBoolean("msg_toggle");
-                            boolean socialSpy = rs.getBoolean("social_spy");
-
-                            // Użycie Konstruktora B
-                            return new User(uuid, name, ip, firstJoin, lastJoin, lastQuit, lastMessageFrom, tpToggle, msgToggle, socialSpy);
-                        }
-                        return null;
-
-                    } catch (SQLException e) {
-                        plugin.getLogger().log(Level.SEVERE, "Błąd podczas pobierania użytkownika po nazwie: " + name, e);
-                        return null;
-                    }
-                }, ToolsPlugin.getExecutor())
-                .thenAccept(user -> {
-                    // ZWRÓCENIE WYNIKU NA GŁÓWNYM WĄTKU POPRZEZ CALLBACK
-                    plugin.getServer().getScheduler().runTask(plugin, () -> callback.onUserLoaded(user));
-                });
-    }
-
-    // --- Reszta metod ---
 
     public void unloadUser(Player player) {
         UUID uuid = player.getUniqueId();
-        User user = users.get(uuid);
-
+        User user = cache.get(uuid);
         if (user != null) {
             user.updateLastQuit();
-            saveUser(user, false);
-            users.remove(uuid);
+            saveUserAsync(user);
+            cache.remove(uuid);
         }
     }
 
     public User getUser(Player player) {
-        return users.get(player.getUniqueId());
+        return cache.get(player.getUniqueId());
     }
 
     public User getUser(UUID uuid) {
-        return users.get(uuid);
+        return cache.get(uuid);
     }
 
     public boolean hasUser(Player player) {
-        return users.containsKey(player.getUniqueId());
+        return cache.containsKey(player.getUniqueId());
     }
 
-    /**
-     * Zapisuje wszystkich użytkowników (przy wyłączeniu serwera)
-     */
-    public void saveAllUsers() {
-        plugin.getLogger().info("Zapisywanie " + users.size() + " użytkowników...");
-
-        for (User user : users.values()) {
-            // Ustawia ostatni czas wyjścia, jeśli gracz jest jeszcze online
-            if (user.isOnline()) {
-                user.updateLastQuit();
+    public void saveAllSyncOnShutdown() {
+        for (User user : cache.values()) {
+            user.updateLastQuit();
+            // użycie sync: dla prostoty tutaj możesz wywołać zwykły updateSync
+            if (db.getType().equals("sqlite")) {
+                // jak wyżej – fallback dla sqlite
+                String updateSql = "UPDATE users SET name=?, ip=?, last_join=?, last_quit=?, last_message_from=?, teleport_toggle=?, msg_toggle=?, social_spy=? WHERE uuid=?";
+                db.executeUpdate(updateSql,
+                        user.getName(),
+                        user.getIp(),
+                        user.getLastJoin(),
+                        user.getLastQuit(),
+                        user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null,
+                        user.isTeleportToggle() ? 1 : 0,
+                        user.isMsgToggle() ? 1 : 0,
+                        user.isSocialSpy() ? 1 : 0,
+                        user.getUuid().toString()
+                );
+            } else {
+                db.executeUpdate(
+                        "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) " +
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                                "ON DUPLICATE KEY UPDATE name=VALUES(name), ip=VALUES(ip), last_join=VALUES(last_join), last_quit=VALUES(last_quit), " +
+                                "last_message_from=VALUES(last_message_from), teleport_toggle=VALUES(teleport_toggle), msg_toggle=VALUES(msg_toggle), social_spy=VALUES(social_spy)",
+                        user.getUuid().toString(),
+                        user.getName(),
+                        user.getIp(),
+                        user.getFirstJoin(),
+                        user.getLastJoin(),
+                        user.getLastQuit(),
+                        user.getLastMessageFrom() != null ? user.getLastMessageFrom().toString() : null,
+                        user.isTeleportToggle(),
+                        user.isMsgToggle(),
+                        user.isSocialSpy()
+                );
             }
-            saveUser(user, true); // Zapis synchroniczny
         }
-
-        users.clear();
-        plugin.getLogger().info("Wszyscy użytkownicy zostali zapisani!");
+        cache.clear();
     }
 
-    public interface UserCallback {
-        void onUserLoaded(User user);
+    private boolean getBool(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        if (db.getType().equals("mysql")) {
+            return rs.getBoolean(column);
+        } else {
+            return rs.getInt(column) == 1;
+        }
     }
 }

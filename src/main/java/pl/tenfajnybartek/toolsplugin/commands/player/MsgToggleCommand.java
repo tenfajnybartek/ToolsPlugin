@@ -32,17 +32,14 @@ public class MsgToggleCommand extends BaseCommand {
             return true;
         }
 
-        // Zmiana statusu
         boolean newState = !user.isMsgToggle();
         user.setMsgToggle(newState);
 
-        // ZMIANA: Dodajemy 'false' dla zapisu asynchronicznego
-        userManager.saveUser(user, false);
+        // NOWE
+        userManager.saveUserAsync(user);
 
-        // Wiadomość zwrotna
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";
         sendMessage(player, "&7Prywatne wiadomości są teraz: " + status);
-
         return true;
     }
 

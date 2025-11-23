@@ -6,10 +6,15 @@ import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
 
 import java.io.File;
 import java.sql.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.logging.Level;
 
 public class DatabaseManager {
+
+    public interface ResultSetMapper<T> {
+        T map(ResultSet rs) throws SQLException;
+    }
 
     private final ToolsPlugin plugin;
     private final ConfigManager configManager;
@@ -63,9 +68,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Inicjalizacja odpowiedniego backendu: MySQL (Hikari) lub SQLite (połączenie)
-     */
     private void setupBackend() {
         if (type.equals("mysql")) {
             setupMySql();
@@ -111,10 +113,8 @@ public class DatabaseManager {
 
     private void setupSQLite() {
         try {
-            // Plik bazy w katalogu pluginu
             File dbFile = new File(plugin.getDataFolder(), database + ".db");
             if (!plugin.getDataFolder().exists()) {
-                // Utwórz folder pluginu, jeśli brak
                 plugin.getDataFolder().mkdirs();
             }
             String jdbcUrl = "jdbc:sqlite:" + dbFile.getAbsolutePath();
@@ -136,9 +136,6 @@ public class DatabaseManager {
                 + "&serverTimezone=UTC";
     }
 
-    /**
-     * Tworzenie tabel (różnice w składni MySQL vs SQLite)
-     */
     private void createTables() {
         if (type.equals("mysql")) {
             createTablesMySql();
@@ -243,9 +240,9 @@ public class DatabaseManager {
                 "banner_uuid TEXT NOT NULL," +
                 "banner_name TEXT NOT NULL," +
                 "reason TEXT NOT NULL," +
-                "ban_time INTEGER NOT NULL," +        // epoch millis
-                "expire_time INTEGER," +              // NULL = brak wygaśnięcia
-                "active INTEGER NOT NULL DEFAULT 1" + // 1 = true
+                "ban_time INTEGER NOT NULL," +
+                "expire_time INTEGER," +
+                "active INTEGER NOT NULL DEFAULT 1" +
                 ")";
 
         String mutesTable = "CREATE TABLE IF NOT EXISTS mutes (" +
@@ -296,9 +293,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Publiczny dostęp do połączenia
-     */
     public Connection getConnection() throws SQLException {
         if (type.equals("mysql")) {
             if (mysqlDataSource == null) throw new SQLException("MySQL DataSource nie zainicjalizowany!");
@@ -311,9 +305,8 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Proste wykonanie UPDATE/INSERT/DELETE
-     */
+    // ================= SYNC =================
+
     public int executeUpdate(String sql, Object... params) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -325,9 +318,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Wykonanie SELECT z mapowaniem na obiekt
-     */
     public <T> T executeQuery(String sql, Function<ResultSet, T> mapper, Object... params) {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -341,6 +331,24 @@ public class DatabaseManager {
         }
     }
 
+    // ================= ASYNC =================
+
+    public CompletableFuture<Integer> updateAsync(String sql, Object... params) {
+        return CompletableFuture.supplyAsync(() -> executeUpdate(sql, params));
+    }
+
+    public <T> CompletableFuture<T> queryAsync(String sql, ResultSetMapper<T> mapper, Object... params) {
+        return CompletableFuture.supplyAsync(() -> {
+            return executeQuery(sql, rs -> {
+                try {
+                    return mapper.map(rs);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }, params);
+        });
+    }
+
     private void bindParams(PreparedStatement ps, Object... params) throws SQLException {
         if (params == null) return;
         for (int i = 0; i < params.length; i++) {
@@ -348,9 +356,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Test połączenia (krótkie)
-     */
     public boolean testConnection() {
         try (Connection conn = getConnection()) {
             return conn != null && !conn.isClosed();
@@ -360,9 +365,6 @@ public class DatabaseManager {
         }
     }
 
-    /**
-     * Zamknięcie backendu
-     */
     public void disconnect() {
         if (type.equals("mysql")) {
             if (mysqlDataSource != null && !mysqlDataSource.isClosed()) {

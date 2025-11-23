@@ -236,16 +236,22 @@ public class ToolsPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // 1. Zapis wszystkich użytkowników synchronicznie (flush cache)
         if (userManager != null) {
-            userManager.saveAllUsers();
+            userManager.saveAllSyncOnShutdown();
         }
-        if (this.asyncTaskExecutor != null) {
+
+        // 2. (Opcjonalnie) Anuluj wszystkie zadania Bukkit powiązane z tym pluginem
+        // Bukkit.getScheduler().cancelTasks(this);
+
+        // 3. Zatrzymanie własnego executora (nie będzie już potrzebny)
+        if (this.asyncTaskExecutor != null && !this.asyncTaskExecutor.isShutdown()) {
             this.asyncTaskExecutor.shutdownNow();
         }
-        // Zamknij połączenie z bazą
+
+        // 4. Zamknięcie połączeń z bazą
         if (databaseManager != null) {
             databaseManager.disconnect();
         }
-        getLogger().info("ToolsPlugin został wyłączony!");
     }
 }

@@ -29,17 +29,14 @@ public class TpaToggleCommand extends BaseCommand {
             return true;
         }
 
-        // Zmiana statusu (zakładamy, że user.isTeleportToggle() istnieje)
         boolean newState = !user.isTeleportToggle();
         user.setTeleportToggle(newState);
 
-        // Zapis do bazy (asynchroniczny = false)
-        userManager.saveUser(user, false);
+        // NOWE
+        userManager.saveUserAsync(user);
 
-        // Wiadomość zwrotna
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";
         sendMessage(player, "&7Otrzymywanie próśb TPA jest teraz: " + status);
-
         return true;
     }
 }

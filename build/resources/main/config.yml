@@ -1,63 +1,36 @@
+# ============================================
 # ToolsPlugin Configuration
-# Wersja: 1.0.0
+# Wersja: 1.0.1
+# ============================================
 
-# ===============================================
-# BAZA DANYCH MySQL
-# ===============================================
 database:
-  # Adres serwera MySQL
-  host: "localhost"
-
-  # Port MySQL (domyślnie 3306)
-  port: 3306
-
-  # Nazwa bazy danych
+  type: "mysql"     # albo "sqlite"
+  host: "localhost" # ignorowane przy sqlite
+  port: 3306        # ignorowane przy sqlite
   database: "toolsplugin"
-
-  # Nazwa użytkownika MySQL
-  username: "root"
-
-  # Hasło do MySQL
-  password: ""
-
-spawn:
-  # Te wartości zostaną wypełnione automatycznie po użyciu /setspawn
-  world: world
-  x: 0.0
-  y: 64.0
-  z: 0.0
-  yaw: 0.0
-  pitch: 0.0
+  username: "root"  # ignorowane przy sqlite
+  password: ""      # ignorowane przy sqlite
 
 settings:
-  # Prefix wyświetlany przed wiadomościami pluginu
   prefix: "&8[&6ToolsPlugin&8] &r"
-
-  # Język pluginu (na przyszłość)
-  language: "pl"
-
-chat:
-  default-format: "%prefix%%player_name%%suffix%&f: &7%message%" # Zawsze używany jako fallback
-
-  custom-formats:
-    admin:
-      permission: "tfbhc.chat.format.admin"  # Priorytetowy format
-      format: "&4[A] %prefix%%player_name%%suffix%&4: &f%message%"
-    vip:
-      permission: "tfbhc.chat.format.vip"    # Drugi format
-      format: "&6[VIP] %prefix%%player_name%%suffix%&6: &e%message%"
+  debug: false
 
 permissions:
-  # Uprawnienie do omijania cooldownów
   bypass-cooldowns: "tfbhc.bypass.cooldown"
 
-# System cooldownów
-cooldowns:
-  # Czy cooldowny są włączone globalnie
-  enabled: true
+chat:
+  default-format: "%prefix%%player_name%%suffix%&f: &7%message%"
+  format: "&f[%prefix%%player_name%%suffix%&f]: &7%message%"
+  custom-formats:
+    admin:
+      permission: "tfbhc.chat.format.admin"
+      format: "&c[ADMIN] %player_name% &7>> &f%message%"
+    vip:
+      permission: "tfbhc.chat.format.vip"
+      format: "&6[VIP] %player_name% &7>> &f%message%"
 
-  # Cooldowny dla poszczególnych komend (w sekundach)
-  # 0 = brak cooldownu
+cooldowns:
+  enabled: true
   commands:
     heal: 30
     feed: 20
@@ -80,29 +53,17 @@ cooldowns:
     back: 5
     sethome: 3
     delhome: 0
-    spawn: 10
-    # Dodaj więcej komend tutaj...
 
-# Ustawienia teleportacji
 teleport:
-  # Czy sprawdzać bezpieczną lokalizację (nie w ścianie/lawie)
   safe-teleport: true
-
-  # Opóźnienie teleportacji (w sekundach)
   delay: 3
-
-  # Czy anulować teleportację przy ruchu gracza
   cancel-on-move: true
+  cancel-on-damage: true
 
-# Ustawienia systemu warpów (na przyszłość)
-warps:
-  enabled: true
-  max-per-player: 10
-
-# Ustawienia systemu home (na przyszłość)
-homes:
-  enabled: true
-  max-per-player: 3
-
-# Debug mode (wyświetla dodatkowe informacje w konsoli)
-debug: false
+spawn:
+  world: ""      # Ustaw poprzez /setspawn
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0

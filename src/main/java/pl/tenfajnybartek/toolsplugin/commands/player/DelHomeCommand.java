@@ -43,7 +43,7 @@ public class DelHomeCommand extends BaseCommand {
         }
 
         // 2. Wywołanie asynchronicznej operacji usuwania z DB
-        CompletableFuture<Boolean> future = homeManager.deleteHome(player, homeName);
+        CompletableFuture<Boolean> future = homeManager.deleteHomeAsync(player, homeName);
 
         // 3. Obsługa wyniku na wątku głównym
         future.thenAccept(success -> {

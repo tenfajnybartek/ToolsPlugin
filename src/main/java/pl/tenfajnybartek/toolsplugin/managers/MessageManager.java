@@ -83,8 +83,8 @@ public class MessageManager {
         senderUser.setLastMessageFrom(target.getUniqueId());
 
         // 5. Zapis do bazy (Asynchroniczny zapis dzięki logice w UserManager)
-        userManager.saveUser(targetUser, false);
-        userManager.saveUser(senderUser, false);
+        userManager.saveUserAsync(targetUser);
+        userManager.saveUserAsync(senderUser);
 
 
         // 6. Powiadomienie Social Spy

@@ -35,7 +35,7 @@ public class SetHomeCommand extends BaseCommand {
         boolean isUpdate = homeManager.hasHome(player, homeName);
 
         // 1. Wywołanie asynchronicznej operacji tworzenia/aktualizacji home'a
-        CompletableFuture<Boolean> future = homeManager.createHome(player, homeName, location);
+        CompletableFuture<Boolean> future = homeManager.setHomeAsync(player, homeName, location);
 
         // 2. Obsługa wyniku na wątku głównym (za pomocą Bukkit Scheduler)
         future.thenAccept(success -> {

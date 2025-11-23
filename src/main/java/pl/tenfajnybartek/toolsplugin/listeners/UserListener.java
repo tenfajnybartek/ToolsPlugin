@@ -39,7 +39,7 @@ public class UserListener implements Listener {
         // 3. Ładowanie Home'ów z DB (asynchroniczne)
         // Uruchamiamy ładowanie w tle; wynik zostanie użyty w HomeManager do zbudowania cache.
         // Cache jest niezbędny do późniejszych szybkich sprawdzeń limitów home'ów.
-        homeManager.loadPlayerHomes(player.getUniqueId());
+        homeManager.loadPlayerHomesAsync(player.getUniqueId());
     }
 
     /**

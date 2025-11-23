@@ -1,8 +1,7 @@
 # ============================================
 # ToolsPlugin Configuration
-# Wersja: 1.0.0
+# Wersja: 1.0.1
 # ============================================
-
 
 database:
   type: "mysql"     # albo "sqlite"
@@ -14,7 +13,7 @@ database:
 
 settings:
   prefix: "&8[&6ToolsPlugin&8] &r"
-  debug: false            # Jeśli używasz w kodzie warunku debug – dodaj getter w ConfigManager
+  debug: false
 
 permissions:
   bypass-cooldowns: "tfbhc.bypass.cooldown"

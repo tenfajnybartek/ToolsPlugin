@@ -24,7 +24,6 @@ public class SocialSpyCommand extends BaseCommand {
         }
 
         Player player = getPlayer(sender);
-
         UserManager userManager = ToolsPlugin.getInstance().getUserManager();
         User user = userManager.getUser(player);
 
@@ -33,17 +32,19 @@ public class SocialSpyCommand extends BaseCommand {
             return true;
         }
 
-        // Zmiana statusu
         boolean newState = !user.isSocialSpy();
         user.setSocialSpy(newState);
 
-        // Asynchroniczny zapis zmiany do bazy danych
-        userManager.saveUser(user, false);
+        // NOWE: asynchroniczny zapis
+        userManager.saveUserAsync(user);
 
-        // Wiadomość zwrotna
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";
         sendMessage(player, "&7Podsłuchiwanie wiadomości jest teraz: " + status);
-
         return true;
+    }
+
+    @Override
+    public List<String> tabComplete(CommandSender sender, String[] args) {
+        return Collections.emptyList();
     }
 }

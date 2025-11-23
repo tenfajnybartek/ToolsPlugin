@@ -8,34 +8,28 @@ import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
 
 public class HomeManager {
 
     private final ToolsPlugin plugin;
     private final ConfigManager configManager;
-    private final DatabaseManager dbManager;
-    private final String TABLE = "player_homes";
+    private final DatabaseManager db;
+    private final String TABLE = "homes";
 
-    // Mapa home'ów: UUID gracza -> (nazwa home -> lokalizacja)
-    private final Map<UUID, Map<String, Location>> homes;
+    private final Map<UUID, Map<String, Location>> cache = new HashMap<>();
 
     public HomeManager(ToolsPlugin plugin, ConfigManager configManager, DatabaseManager dbManager) {
         this.plugin = plugin;
         this.configManager = configManager;
-        this.dbManager = dbManager;
-        this.homes = new HashMap<>();
-
-        initializeTable();
+        this.db = dbManager;
+        ensureTable(); // Tworzenie tabeli (DatabaseManager też tworzy, ale double-safe)
     }
 
-    // ====================================================================
-    // 1. Inicjalizacja Bazy Danych
-    // ====================================================================
-    private void initializeTable() {
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS " + TABLE + " (" +
+    private void ensureTable() {
+        String sql = db.getType().equals("mysql")
+                ? "CREATE TABLE IF NOT EXISTS homes (" +
                 "id INT AUTO_INCREMENT PRIMARY KEY," +
-                "player_uuid VARCHAR(36) NOT NULL," +
+                "owner_uuid VARCHAR(36) NOT NULL," +
                 "home_name VARCHAR(64) NOT NULL," +
                 "world_name VARCHAR(64) NOT NULL," +
                 "x DOUBLE NOT NULL," +
@@ -43,182 +37,129 @@ public class HomeManager {
                 "z DOUBLE NOT NULL," +
                 "yaw FLOAT NOT NULL," +
                 "pitch FLOAT NOT NULL," +
-                "UNIQUE KEY unique_home (player_uuid, home_name)," +
-                "INDEX (player_uuid)" +
+                "UNIQUE KEY unique_home (owner_uuid, home_name)" +
+                ")"
+                : "CREATE TABLE IF NOT EXISTS homes (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "owner_uuid TEXT NOT NULL," +
+                "home_name TEXT NOT NULL," +
+                "world_name TEXT NOT NULL," +
+                "x REAL NOT NULL," +
+                "y REAL NOT NULL," +
+                "z REAL NOT NULL," +
+                "yaw REAL NOT NULL," +
+                "pitch REAL NOT NULL," +
+                "UNIQUE(owner_uuid, home_name)" +
                 ")";
-
-        try (Connection connection = dbManager.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute(createTableQuery);
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia tabeli " + TABLE, e);
-        }
+        db.executeUpdate(sql);
     }
 
-    // ====================================================================
-    // 2. Ładowanie Home'ów (Asynchroniczne)
-    // ====================================================================
-
-    public CompletableFuture<Void> loadPlayerHomes(UUID uuid) {
-        return CompletableFuture.runAsync(() -> {
-            Map<String, Location> playerHomes = new HashMap<>();
-            String sqlSelect = "SELECT * FROM " + TABLE + " WHERE player_uuid = ?";
-
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sqlSelect)) {
-
-                ps.setString(1, uuid.toString());
-
-                try (ResultSet rs = ps.executeQuery()) {
+    /**
+     * Ładuje wszystkie home'y danego gracza asynchronicznie do cache.
+     */
+    public CompletableFuture<Map<String, Location>> loadPlayerHomesAsync(UUID ownerUuid) {
+        return db.queryAsync(
+                "SELECT home_name, world_name, x, y, z, yaw, pitch FROM " + TABLE + " WHERE owner_uuid = ?",
+                rs -> {
+                    Map<String, Location> homes = new HashMap<>();
                     while (rs.next()) {
-                        Location location = mapResultSetToLocation(rs);
-                        String homeName = rs.getString("home_name").toLowerCase();
-                        // WAŻNE: Dodaj do mapy tylko jeśli lokalizacja nie jest null (świat istnieje)
-                        if (location != null) {
-                            playerHomes.put(homeName, location);
+                        Location loc = toLocation(rs);
+                        if (loc != null) {
+                            homes.put(rs.getString("home_name").toLowerCase(), loc);
                         }
                     }
-                }
-                homes.put(uuid, playerHomes);
-
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas ładowania home'ów dla gracza " + uuid, e);
-            }
-        }, ToolsPlugin.getExecutor());
+                    return homes;
+                },
+                ownerUuid.toString()
+        ).thenApply(map -> {
+            // Aktualizacja cache na głównym wątku
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                cache.put(ownerUuid, map);
+            });
+            return map;
+        });
     }
-
-    public void unloadPlayerHomes(UUID uuid) {
-        homes.remove(uuid);
-    }
-
-    // ====================================================================
-    // 3. Logika Home'ów (Asynchroniczna)
-    // ====================================================================
 
     /**
-     * Tworzy lub aktualizuje home dla gracza.
-     * NAPRAWIONO: Jawne ustawianie parametrów dla UPDATE/INSERT, bez metody pomocniczej.
+     * Tworzy lub aktualizuje home gracza.
+     * @return true jeśli operacja zakończyła się powodzeniem.
      */
-    public CompletableFuture<Boolean> createHome(Player player, String name, Location location) {
+    public CompletableFuture<Boolean> setHomeAsync(Player player, String name, Location location) {
         UUID uuid = player.getUniqueId();
-        String lowerName = name.toLowerCase();
+        String key = name.toLowerCase();
 
         int maxHomes = getMaxHomes(player);
-        int currentHomes = getHomeCount(player);
+        int current = getHomeCount(player);
 
-        if (currentHomes >= maxHomes && !getHomeNames(player).contains(lowerName)) {
+        boolean isUpdate = hasHome(player, key);
+        if (!isUpdate && current >= maxHomes) {
             return CompletableFuture.completedFuture(false);
         }
 
-        return CompletableFuture.supplyAsync(() -> {
+        String updateSql = "UPDATE " + TABLE + " SET world_name=?, x=?, y=?, z=?, yaw=?, pitch=? WHERE owner_uuid=? AND home_name=?";
+        String insertSql = "INSERT INTO " + TABLE + " (owner_uuid, home_name, world_name, x, y, z, yaw, pitch) VALUES (?,?,?,?,?,?,?,?)";
 
-            String sqlUpdate = "UPDATE " + TABLE +
-                    " SET world_name=?, x=?, y=?, z=?, yaw=?, pitch=? WHERE player_uuid=? AND home_name=?";
-
-            String sqlInsert = "INSERT INTO " + TABLE +
-                    " (player_uuid, home_name, world_name, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-            try (Connection conn = dbManager.getConnection()) {
-
-                // 1. Próba aktualizacji (8 parametrów)
-                try (PreparedStatement psUpdate = conn.prepareStatement(sqlUpdate)) {
-                    // Ustawianie 6 parametrów SET
-                    psUpdate.setString(1, location.getWorld().getName());
-                    psUpdate.setDouble(2, location.getX());
-                    psUpdate.setDouble(3, location.getY());
-                    psUpdate.setDouble(4, location.getZ());
-                    psUpdate.setFloat(5, location.getYaw());
-                    psUpdate.setFloat(6, location.getPitch());
-
-                    // Ustawianie 2 parametrów WHERE
-                    psUpdate.setString(7, uuid.toString());
-                    psUpdate.setString(8, lowerName);
-
-                    if (psUpdate.executeUpdate() > 0) {
-                        updateHomeCache(uuid, lowerName, location);
-                        return true;
-                    }
-                }
-
-                // 2. Jeśli aktualizacja nie powiodła się, wstaw nowy rekord (8 parametrów)
-                try (PreparedStatement psInsert = conn.prepareStatement(sqlInsert)) {
-                    // Ustawianie 2 parametrów gracza
-                    psInsert.setString(1, uuid.toString());
-                    psInsert.setString(2, lowerName);
-
-                    // Ustawianie 6 parametrów lokalizacji
-                    psInsert.setString(3, location.getWorld().getName());
-                    psInsert.setDouble(4, location.getX());
-                    psInsert.setDouble(5, location.getY());
-                    psInsert.setDouble(6, location.getZ());
-                    psInsert.setFloat(7, location.getYaw());
-                    psInsert.setFloat(8, location.getPitch());
-
-                    if (psInsert.executeUpdate() > 0) {
-                        updateHomeCache(uuid, lowerName, location);
-                        return true;
-                    }
-                }
-
-                return false;
-
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas tworzenia/aktualizacji home: " + lowerName + " dla " + player.getName(), e);
-                return false;
+        // Najpierw próba update, jeśli brak – insert.
+        return db.updateAsync(updateSql,
+                location.getWorld().getName(),
+                location.getX(),
+                location.getY(),
+                location.getZ(),
+                location.getYaw(),
+                location.getPitch(),
+                uuid.toString(),
+                key
+        ).thenCompose(rows -> {
+            if (rows > 0) {
+                // zaktualizowano
+                Bukkit.getScheduler().runTask(plugin, () -> putInCache(uuid, key, location));
+                return CompletableFuture.completedFuture(true);
             }
-        }, ToolsPlugin.getExecutor());
-    }
-
-    /**
-     * Usuwa home gracza asynchronicznie.
-     */
-    public CompletableFuture<Boolean> deleteHome(Player player, String name) {
-        UUID uuid = player.getUniqueId();
-        String lowerName = name.toLowerCase();
-
-        if (!homes.containsKey(uuid) || !homes.get(uuid).containsKey(lowerName)) {
-            return CompletableFuture.completedFuture(false);
-        }
-
-        // ASYNCHRONICZNA OPERACJA USUWANIA
-        return CompletableFuture.supplyAsync(() -> {
-            String sqlDelete = "DELETE FROM " + TABLE + " WHERE player_uuid = ? AND home_name = ?";
-            try (Connection conn = dbManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sqlDelete)) {
-
-                // Ustawianie 2 parametrów
-                ps.setString(1, uuid.toString());
-                ps.setString(2, lowerName);
-
-                if (ps.executeUpdate() > 0) {
-                    removeHomeFromCache(uuid, lowerName);
+            // Insert
+            return db.updateAsync(insertSql,
+                    uuid.toString(),
+                    key,
+                    location.getWorld().getName(),
+                    location.getX(),
+                    location.getY(),
+                    location.getZ(),
+                    location.getYaw(),
+                    location.getPitch()
+            ).thenApply(insertRows -> {
+                if (insertRows > 0) {
+                    Bukkit.getScheduler().runTask(plugin, () -> putInCache(uuid, key, location));
                     return true;
                 }
                 return false;
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Błąd podczas usuwania home: " + lowerName + " dla " + player.getName(), e);
-                return false;
-            }
-        }, ToolsPlugin.getExecutor());
+            });
+        });
     }
 
-    // ... [Metody Synchroniczne getHome, hasHome, getHomeNames, getHomeCount, getMaxHomes bez zmian]
-
-    // ====================================================================
-    // 4. Metody Pomocnicze i Cache
-    // ====================================================================
-
-    // Metoda mapResultSetToLocation (bez zmian)
-    private Location mapResultSetToLocation(ResultSet rs) throws SQLException {
-        String worldName = rs.getString("world_name");
-
-        if (worldName == null || Bukkit.getWorld(worldName) == null) {
-            plugin.getLogger().warning("Błąd: Świat '" + worldName + "' nie istnieje dla home!");
-            return null;
+    public CompletableFuture<Boolean> deleteHomeAsync(Player player, String name) {
+        UUID uuid = player.getUniqueId();
+        String key = name.toLowerCase();
+        if (!hasHome(player, key)) {
+            return CompletableFuture.completedFuture(false);
         }
+        return db.updateAsync("DELETE FROM " + TABLE + " WHERE owner_uuid=? AND home_name=?",
+                uuid.toString(),
+                key
+        ).thenApply(rows -> {
+            if (rows > 0) {
+                Bukkit.getScheduler().runTask(plugin, () -> removeFromCache(uuid, key));
+                return true;
+            }
+            return false;
+        });
+    }
 
+    // ================== Cache & Helpers ==================
+
+    private Location toLocation(ResultSet rs) throws SQLException {
+        String world = rs.getString("world_name");
+        if (world == null || Bukkit.getWorld(world) == null) return null;
         return new Location(
-                Bukkit.getWorld(worldName),
+                Bukkit.getWorld(world),
                 rs.getDouble("x"),
                 rs.getDouble("y"),
                 rs.getDouble("z"),
@@ -227,60 +168,38 @@ public class HomeManager {
         );
     }
 
-    // USUNIĘTO NIEPOPRAWNĄ METODĘ setHomeLocationParams
-    // private void setHomeLocationParams(...) { ... }
-
-    private void updateHomeCache(UUID uuid, String name, Location location) {
-        homes.computeIfAbsent(uuid, k -> new HashMap<>()).put(name, location);
+    private void putInCache(UUID uuid, String name, Location loc) {
+        cache.computeIfAbsent(uuid, u -> new HashMap<>()).put(name, loc);
     }
 
-    private void removeHomeFromCache(UUID uuid, String name) {
-        if (homes.containsKey(uuid)) {
-            homes.get(uuid).remove(name);
-            if (homes.get(uuid).isEmpty()) {
-                homes.remove(uuid);
-            }
+    private void removeFromCache(UUID uuid, String name) {
+        Map<String, Location> map = cache.get(uuid);
+        if (map != null) {
+            map.remove(name);
+            if (map.isEmpty()) cache.remove(uuid);
         }
     }
 
-    // ... [Metoda getMaxHomes bez zmian]
     public Location getHome(Player player, String name) {
-        UUID uuid = player.getUniqueId();
-        String lowerName = name.toLowerCase();
-
-        if (!homes.containsKey(uuid)) {
-            return null;
-        }
-
-        return homes.get(uuid).get(lowerName);
+        Map<String, Location> map = cache.get(player.getUniqueId());
+        return map == null ? null : map.get(name.toLowerCase());
     }
 
     public boolean hasHome(Player player, String name) {
-        UUID uuid = player.getUniqueId();
-        String lowerName = name.toLowerCase();
-
-        return homes.containsKey(uuid) && homes.get(uuid).containsKey(lowerName);
+        Map<String, Location> map = cache.get(player.getUniqueId());
+        return map != null && map.containsKey(name.toLowerCase());
     }
 
     public Set<String> getHomeNames(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        if (!homes.containsKey(uuid)) {
-            return new HashSet<>();
-        }
-
-        return new HashSet<>(homes.get(uuid).keySet());
+        Map<String, Location> map = cache.get(player.getUniqueId());
+        return map == null ? Collections.emptySet() : new HashSet<>(map.keySet());
     }
 
     public int getHomeCount(Player player) {
-        UUID uuid = player.getUniqueId();
-
-        if (!homes.containsKey(uuid)) {
-            return 0;
-        }
-
-        return homes.get(uuid).size();
+        Map<String, Location> map = cache.get(player.getUniqueId());
+        return map == null ? 0 : map.size();
     }
+
     public int getMaxHomes(Player player) {
         if (player.hasPermission("tfbhc.homes.admin")) {
             return configManager.getConfig().getInt("homes.rank-limits.admin", 20);
@@ -291,7 +210,10 @@ public class HomeManager {
         if (player.hasPermission("tfbhc.homes.vip")) {
             return configManager.getConfig().getInt("homes.rank-limits.vip", 5);
         }
-
         return configManager.getConfig().getInt("homes.max-per-player", 3);
+    }
+
+    public void unloadPlayerHomes(UUID uuid) {
+        cache.remove(uuid);
     }
 }

@@ -19,8 +19,9 @@ public class MuteRecord {
     private boolean active;
 
     // Konstruktor do tworzenia nowego rekordu (np. z komendy)
-    public MuteRecord(UUID targetUuid, String targetName, UUID muterUuid, String muterName, String reason, LocalDateTime muteTime, LocalDateTime expireTime) {
-        this.id = -1; // -1 oznacza, że rekord nie ma jeszcze ID z bazy
+    public MuteRecord(UUID targetUuid, String targetName, UUID muterUuid, String muterName, String reason,
+                      LocalDateTime muteTime, LocalDateTime expireTime) {
+        this.id = -1;
         this.targetUuid = targetUuid;
         this.targetName = targetName;
         this.muterUuid = muterUuid;
@@ -32,7 +33,8 @@ public class MuteRecord {
     }
 
     // Konstruktor do ładowania istniejącego rekordu z bazy
-    public MuteRecord(int id, UUID targetUuid, String targetName, UUID muterUuid, String muterName, String reason, LocalDateTime muteTime, LocalDateTime expireTime, boolean active) {
+    public MuteRecord(int id, UUID targetUuid, String targetName, UUID muterUuid, String muterName, String reason,
+                      LocalDateTime muteTime, LocalDateTime expireTime, boolean active) {
         this.id = id;
         this.targetUuid = targetUuid;
         this.targetName = targetName;
@@ -44,18 +46,25 @@ public class MuteRecord {
         this.active = active;
     }
 
-    // Sprawdza, czy wyciszenie jest nadal aktywne
+    /**
+     * Czy rekord jest nadal aktywny (flaga + brak wygaśnięcia).
+     */
     public boolean isActive() {
-        if (!active) {
-            return false;
-        }
-        if (isPermanent()) {
-            return true;
-        }
-        // Sprawdzenie, czy czas wygaśnięcia minął
-        return expireTime.isAfter(LocalDateTime.now());
+        if (!active) return false;
+        if (isPermanent()) return true;
+        return !hasExpired();
     }
 
+    /**
+     * Czy mute ma już miniony czas wygaśnięcia.
+     */
+    public boolean hasExpired() {
+        return !isPermanent() && expireTime.isBefore(LocalDateTime.now());
+    }
+
+    /**
+     * Czy mute jest permanentny (brak expireTime).
+     */
     public boolean isPermanent() {
         return expireTime == null;
     }
@@ -64,7 +73,7 @@ public class MuteRecord {
         return TimeUtils.getMuteMessage(this);
     }
 
-    // Gettery
+    // Gettery / Settery
     public int getId() { return id; }
     public UUID getTargetUuid() { return targetUuid; }
     public String getTargetName() { return targetName; }
