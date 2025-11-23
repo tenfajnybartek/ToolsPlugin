@@ -80,10 +80,6 @@ public class ChatManager {
         return finalMessage;
     }
 
-    /**
-     * Metoda pomocnicza do wysyłania wiadomości systemowych (z prefixem pluginu).
-     * Zakładamy, że ConfigManager ma metodę getPrefix().
-     */
     public void sendMessage(CommandSender sender, String message) {
         // Używamy ConfigManager, aby uzyskać prefix pluginu (np. [&bTools&f])
         String fullMessage = configManager.getPrefix() + message;

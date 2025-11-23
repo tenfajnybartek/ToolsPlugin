@@ -12,8 +12,8 @@ database:
   password: ""      # ignorowane przy sqlite
 
 settings:
+  prefix-enabled: true
   prefix: "&8[&6ToolsPlugin&8] &r"
-  debug: false
 
 permissions:
   bypass-cooldowns: "tfbhc.bypass.cooldown"

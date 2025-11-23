@@ -34,7 +34,14 @@ public class ConfigManager {
         plugin.saveConfig();
     }
 
+    public boolean isPrefixEnabled() {
+        return config.getBoolean("settings.prefix-enabled", true);
+    }
+
     public String getPrefix() {
+        if (!isPrefixEnabled()) {
+            return ""; // prefix wyłączony
+        }
         return config.getString("settings.prefix", "&8[&6ToolsPlugin&8] &r");
     }
 
