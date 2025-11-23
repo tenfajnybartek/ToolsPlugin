@@ -56,13 +56,12 @@ public class ToolsPlugin extends JavaPlugin {
                 " | "        // separator
         );
         actionBarManager.start();
-        actionBarManager.start();
         cooldownManager = new CooldownManager(configManager);
         databaseManager = new DatabaseManager(this);
         this.permissionManager = new PermissionManager(this.getLuckPermsApi());
         this.asyncTaskExecutor = Executors.newFixedThreadPool(4);
         userManager = new UserManager(this, databaseManager);
-        teleportManager = new TeleportManager(this, configManager, userManager);
+        teleportManager = new TeleportManager(this, configManager, userManager, actionBarManager);
         banManager = new BanManager(this, databaseManager);
         muteManager = new MuteManager(this, databaseManager);
         homeManager = new HomeManager(this, configManager, databaseManager);
