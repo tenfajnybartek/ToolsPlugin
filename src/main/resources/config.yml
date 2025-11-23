@@ -1,12 +1,51 @@
 # ToolsPlugin Configuration
 # Wersja: 1.0.0
 
+# ===============================================
+# BAZA DANYCH MySQL
+# ===============================================
+database:
+  # Adres serwera MySQL
+  host: "localhost"
+
+  # Port MySQL (domyślnie 3306)
+  port: 3306
+
+  # Nazwa bazy danych
+  database: "toolsplugin"
+
+  # Nazwa użytkownika MySQL
+  username: "root"
+
+  # Hasło do MySQL
+  password: ""
+
+spawn:
+  # Te wartości zostaną wypełnione automatycznie po użyciu /setspawn
+  world: world
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
+
 settings:
   # Prefix wyświetlany przed wiadomościami pluginu
   prefix: "&8[&6ToolsPlugin&8] &r"
 
   # Język pluginu (na przyszłość)
   language: "pl"
+
+chat:
+  default-format: "%prefix%%player_name%%suffix%&f: &7%message%" # Zawsze używany jako fallback
+
+  custom-formats:
+    admin:
+      permission: "tfbhc.chat.format.admin"  # Priorytetowy format
+      format: "&4[A] %prefix%%player_name%%suffix%&4: &f%message%"
+    vip:
+      permission: "tfbhc.chat.format.vip"    # Drugi format
+      format: "&6[VIP] %prefix%%player_name%%suffix%&6: &e%message%"
 
 permissions:
   # Uprawnienie do omijania cooldownów
@@ -41,6 +80,7 @@ cooldowns:
     back: 5
     sethome: 3
     delhome: 0
+    spawn: 10
     # Dodaj więcej komend tutaj...
 
 # Ustawienia teleportacji

@@ -31,8 +31,9 @@ public class HomeCommand extends BaseCommand {
         CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
         // /home - teleportuj do domyślnego home ("home")
-        String homeName = args.length == 0 ? "home" : args[0];
+        String homeName = args.length == 0 ? "home" : args[0].toLowerCase();
 
+        // 1. Sprawdź, czy home istnieje w cache
         if (!homeManager.hasHome(player, homeName)) {
             if (homeManager.getHomeCount(player) == 0) {
                 sendMessage(sender, "&cNie masz żadnych domów! Użyj &e/sethome &caby utworzyć.");
@@ -43,17 +44,25 @@ public class HomeCommand extends BaseCommand {
             return true;
         }
 
-        // Sprawdź cooldown
+        // 2. Sprawdź cooldown
         if (cooldownManager.checkCooldown(player, "home")) {
             return true;
         }
 
+        // 3. Pobierz lokalizację z cache
         Location homeLocation = homeManager.getHome(player, homeName);
 
-        // Teleportuj z delay
+        // 🚨 KOREKTA: Sprawdzenie, czy świat istnieje / lokalizacja jest poprawna
+        if (homeLocation == null || homeLocation.getWorld() == null) {
+            sendMessage(player, "&cŚwiat, w którym znajduje się dom &e" + homeName + "&c, nie jest załadowany! Zgłoś to administracji.");
+            // Opcjonalnie: możesz tutaj dać opcję usunięcia tego home'a z DB, ale lepiej zostawić to adminom.
+            return true;
+        }
+
+        // 4. Teleportuj z delay
         teleportManager.teleport(player, homeLocation, "&aPrzeteleportowano do domu &e" + homeName);
 
-        // Ustaw cooldown
+        // 5. Ustaw cooldown
         cooldownManager.setCooldown(player, "home");
 
         return true;
@@ -64,6 +73,8 @@ public class HomeCommand extends BaseCommand {
         if (args.length == 1 && isPlayer(sender)) {
             Player player = getPlayer(sender);
             HomeManager homeManager = ToolsPlugin.getInstance().getHomeManager();
+
+            // TabComplete bazuje na szybkim odczycie cache
             return homeManager.getHomeNames(player).stream()
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());

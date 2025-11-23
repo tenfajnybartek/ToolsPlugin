@@ -1,11 +1,15 @@
 package pl.tenfajnybartek.toolsplugin.commands.player;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
 import pl.tenfajnybartek.toolsplugin.managers.HomeManager;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public class SetHomeCommand extends BaseCommand {
 
@@ -21,31 +25,50 @@ public class SetHomeCommand extends BaseCommand {
         }
 
         Player player = getPlayer(sender);
-        HomeManager homeManager = ToolsPlugin.getInstance().getHomeManager();
+        ToolsPlugin plugin = ToolsPlugin.getInstance();
+        HomeManager homeManager = plugin.getHomeManager();
 
-        String homeName = args.length == 0 ? "home" : args[0];
+        String homeName = args.length == 0 ? "home" : args[0].toLowerCase();
+        Location location = player.getLocation();
 
-        // Sprawdź czy gracz ma już ten home (nadpisywanie)
+        // Synchroniczne sprawdzenie cache (do celów wiadomości), czy nadpisujemy
         boolean isUpdate = homeManager.hasHome(player, homeName);
 
-        // Utwórz/zaktualizuj home
-        Location location = player.getLocation();
-        boolean success = homeManager.createHome(player, homeName, location);
+        // 1. Wywołanie asynchronicznej operacji tworzenia/aktualizacji home'a
+        CompletableFuture<Boolean> future = homeManager.createHome(player, homeName, location);
 
-        if (!success) {
-            int maxHomes = homeManager.getMaxHomes(player);
-            sendMessage(sender, "&cOsiągnąłeś maksymalną liczbę domów! &7(" + maxHomes + ")");
-            sendMessage(sender, "&eTwoje domy: &f" + String.join("&7, &f", homeManager.getHomeNames(player)));
-            return true;
-        }
+        // 2. Obsługa wyniku na wątku głównym (za pomocą Bukkit Scheduler)
+        future.thenAccept(success -> {
 
-        if (isUpdate) {
-            sendMessage(sender, "&aZaktualizowano lokalizację domu &e" + homeName);
-        } else {
-            int currentHomes = homeManager.getHomeCount(player);
-            int maxHomes = homeManager.getMaxHomes(player);
-            sendMessage(sender, "&aUtworzono dom &e" + homeName + " &7(" + currentHomes + "/" + maxHomes + ")");
-        }
+            // Używamy runTask, aby wykonać kod Bukkit na wątku głównym (Main Thread)
+            Bukkit.getScheduler().runTask(plugin, () -> {
+
+                if (!player.isOnline()) {
+                    return;
+                }
+
+                if (success) {
+                    // Sukces
+                    if (isUpdate) {
+                        sendMessage(player, "&aZaktualizowano lokalizację domu &e" + homeName);
+                    } else {
+                        // Cache jest już zaktualizowany przez HomeManager
+                        int currentHomes = homeManager.getHomeCount(player);
+                        int maxHomes = homeManager.getMaxHomes(player);
+                        sendMessage(player, "&aUtworzono dom &e" + homeName + " &7(" + currentHomes + "/" + maxHomes + ")");
+                    }
+                } else {
+                    // Niepowodzenie (limit home'ów)
+                    int maxHomes = homeManager.getMaxHomes(player);
+                    sendMessage(player, "&cOsiągnąłeś maksymalną liczbę domów! &7(" + maxHomes + ")");
+
+                    if (!homeManager.getHomeNames(player).isEmpty()) {
+                        String homesList = String.join("&7, &f", homeManager.getHomeNames(player));
+                        sendMessage(player, "&eTwoje domy: &f" + homesList);
+                    }
+                }
+            }); // Koniec runTask
+        }); // Koniec thenAccept
 
         return true;
     }

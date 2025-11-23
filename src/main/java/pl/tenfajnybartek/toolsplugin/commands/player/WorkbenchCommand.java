@@ -1,7 +1,9 @@
 package pl.tenfajnybartek.toolsplugin.commands.player;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 
 public class WorkbenchCommand extends BaseCommand {
@@ -24,12 +26,7 @@ public class WorkbenchCommand extends BaseCommand {
         }
 
         Player player = getPlayer(sender);
-
-        // Używamy @SuppressWarnings, aby wyciszyć ostrzeżenie o deprecacji
-        @SuppressWarnings("deprecation")
-        // Używamy metody z null, która działa niezawodnie na większości serwerów
-        boolean forced = true; // Wymuszamy otwarcie, jeśli gracz ma inne GUI otwarte
-        player.openWorkbench(null, forced);
+        player.openInventory(Bukkit.createInventory(null, InventoryType.WORKBENCH));
 
         sendMessage(sender, "&aOtwarto wirtualny stół rzemieślniczy!");
 

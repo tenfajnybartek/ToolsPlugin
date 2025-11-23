@@ -79,7 +79,7 @@ public class HealCommand extends BaseCommand {
     }
 
     private void healPlayer(Player player) {
-        AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.MAX_HEALTH);
+        AttributeInstance maxHealthAttribute = player.getAttribute(Attribute.GENERIC_MAX_HEALTH);
 
         if (maxHealthAttribute != null) {
             player.setHealth(maxHealthAttribute.getValue());

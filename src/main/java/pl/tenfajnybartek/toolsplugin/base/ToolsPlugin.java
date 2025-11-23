@@ -1,42 +1,82 @@
 package pl.tenfajnybartek.toolsplugin.base;
 
+import net.luckperms.api.LuckPerms;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import pl.tenfajnybartek.toolsplugin.commands.player.*;
-import pl.tenfajnybartek.toolsplugin.listeners.ChatListener;
+import pl.tenfajnybartek.toolsplugin.listeners.*;
 import pl.tenfajnybartek.toolsplugin.managers.*;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ToolsPlugin extends JavaPlugin {
 
     private static ToolsPlugin instance;
+    private PermissionManager permissionManager;
     private CommandManager commandManager;
+    private LuckPerms luckPermsApi = null;
     private ChatManager chatManager;
     private ConfigManager configManager;
     private CooldownManager cooldownManager;
     private TeleportManager teleportManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
+    private MuteManager muteManager;
+    private ExecutorService asyncTaskExecutor;
+    private BanManager banManager;
+    private DatabaseManager databaseManager;
+    private UserManager userManager;
+    private MessageManager messageManager;
 
     @Override
     public void onEnable() {
         instance = this;
-
+        if (!setupPermissions()) {
+            getLogger().severe("Nie udało się zainicjować API Vault lub LuckPerms. Wylaczam plugin.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         configManager = new ConfigManager(this);
         cooldownManager = new CooldownManager(configManager);
-        teleportManager = new TeleportManager(this, configManager);
-        homeManager = new HomeManager(this, configManager);
-        warpManager = new WarpManager(this);
+        databaseManager = new DatabaseManager(this);
+        this.permissionManager = new PermissionManager(this.getLuckPermsApi());
+        this.asyncTaskExecutor = Executors.newFixedThreadPool(4);
+        userManager = new UserManager(this, databaseManager);
+        teleportManager = new TeleportManager(this, configManager, userManager);
+        banManager = new BanManager(this, databaseManager);
+        muteManager = new MuteManager(this, databaseManager);
+        homeManager = new HomeManager(this, configManager, databaseManager);
+        warpManager = new WarpManager(this, databaseManager);
         commandManager = new CommandManager(this);
-        chatManager = new ChatManager(this);
+        chatManager = new ChatManager(this, configManager, permissionManager);
+        messageManager = new MessageManager(this, userManager);
 
         registerCommands();
         registerListeners();
         startCooldownCleanupTask();
         getLogger().info("ToolsPlugin został włączony!");
     }
+
+    private boolean setupPermissions() {
+        // --- Inicjalizacja LuckPerms (tylko to zostaje) ---
+
+        RegisteredServiceProvider<LuckPerms> providerLP = getServer().getServicesManager().getRegistration(LuckPerms.class);
+        if (providerLP != null) {
+            this.luckPermsApi = providerLP.getProvider();
+            getLogger().info("Pomyslnie zaladowano LuckPerms API.");
+            return true; // Zwracamy true, jeśli LuckPerms jest dostępny
+        } else {
+            getLogger().severe("LuckPerms API nie zostalo znalezione. Jest wymagane do chatu.");
+            return false; // Zwracamy false, jeśli jest wymagany i brak
+        }
+        // Usunięto cały blok inicjalizacji Vault
+    }
+
     private void startCooldownCleanupTask() {
         new BukkitRunnable() {
             @Override
@@ -66,18 +106,15 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new EnderChestCommand());
         registerCommand(new ClearEnderChestCommand());
         registerCommand(new OpenInventoryCommand());
-
         registerCommand(new TimeCommand());
         registerCommand(new WeatherCommand());
         registerCommand(new DayCommand());
         registerCommand(new NightCommand());
-
         registerCommand(new GiveCommand());
         registerCommand(new ItemGiveCommand());
         registerCommand(new RepairCommand());
         registerCommand(new EnchantCommand());
         registerCommand(new HatCommand());
-
         registerCommand(new KillCommand());
         registerCommand(new SuicideCommand());
         registerCommand(new KickCommand());
@@ -85,7 +122,6 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new BurnCommand());
         registerCommand(new SmiteCommand());
         registerCommand(new ToolsAdminCommand());
-
         registerCommand(new BroadCastCommand());
         registerCommand(new WorkbenchCommand());
         registerCommand(new AnvilCommand());
@@ -95,11 +131,30 @@ public class ToolsPlugin extends JavaPlugin {
         registerCommand(new WhoisCommand());
         registerCommand(new TPSCommand());
         registerCommand(new ChatCommand(chatManager));
+        registerCommand(new MsgCommand());
+        registerCommand(new ReplyCommand());
+        registerCommand(new MsgToggleCommand());
+        registerCommand(new SocialSpyCommand());
+        registerCommand(new TpaCommand());
+        registerCommand(new TpAcceptCommand());
+        registerCommand(new TpDenyCommand());
+        registerCommand(new TpaToggleCommand());
+        registerCommand(new BanCommand());
+        registerCommand(new UnBanCommand());
+        registerCommand(new BanInfoCommand());
+        registerCommand(new MuteCommand());
+        registerCommand(new UnMuteCommand());
+        registerCommand(new SetSpawnCommand());
+        registerCommand(new SpawnCommand());
     }
 
 
     private void registerListeners() {
         registerListener(new ChatListener(chatManager));
+        registerListener(new TeleportListener(teleportManager, configManager));
+        registerListener(new UserListener(userManager, homeManager));
+        registerListener(new BanListener(banManager));
+        registerListener(new MuteListener(muteManager, this));
     }
 
     public static void registerListener(Listener listener) {
@@ -148,8 +203,49 @@ public class ToolsPlugin extends JavaPlugin {
         return teleportManager;
     }
 
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+
+    public UserManager getUserManager() {
+        return userManager;
+    }
+    public MessageManager getMessageManager() { // NOWY GETTER
+        return messageManager;
+    }
+    public BanManager getBanManager() {
+        return banManager;
+    }
+
+    public LuckPerms getLuckPermsApi() {
+        return luckPermsApi;
+    }
+    public static ExecutorService getExecutor() {
+        // Musimy użyć statycznej instancji, aby uzyskać dostęp do pola asyncTaskExecutor
+        if (instance == null || instance.asyncTaskExecutor == null) {
+            throw new IllegalStateException("Executor Service not initialized!");
+        }
+        return instance.asyncTaskExecutor;
+    }
+    public MuteManager getMuteManager() { // NOWY GETTER
+        return muteManager;
+    }
+    public PermissionManager getPermissionManager() {
+        return permissionManager;
+    }
+
     @Override
     public void onDisable() {
+        if (userManager != null) {
+            userManager.saveAllUsers();
+        }
+        if (this.asyncTaskExecutor != null) {
+            this.asyncTaskExecutor.shutdownNow();
+        }
+        // Zamknij połączenie z bazą
+        if (databaseManager != null) {
+            databaseManager.disconnect();
+        }
         getLogger().info("ToolsPlugin został wyłączony!");
     }
 }

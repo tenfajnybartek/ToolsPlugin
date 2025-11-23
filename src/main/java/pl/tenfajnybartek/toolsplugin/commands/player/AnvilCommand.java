@@ -1,7 +1,10 @@
 package pl.tenfajnybartek.toolsplugin.commands.player;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.inventory.Inventory;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 
 public class AnvilCommand extends BaseCommand {
@@ -25,11 +28,8 @@ public class AnvilCommand extends BaseCommand {
 
         Player player = getPlayer(sender);
 
-        // Używamy @SuppressWarnings, aby wyciszyć ostrzeżenie o deprecacji
-        @SuppressWarnings("deprecation")
-        boolean forced = true; // Wymuszamy otwarcie
-        player.openAnvil(null, forced);
-
+        Inventory anvilInventory = Bukkit.createInventory(null, InventoryType.ANVIL);
+        player.openInventory(anvilInventory);
         sendMessage(sender, "&aOtwarto wirtualne kowadło!");
 
         return true;

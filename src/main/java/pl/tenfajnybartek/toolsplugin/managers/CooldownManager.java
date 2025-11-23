@@ -6,16 +6,18 @@ import pl.tenfajnybartek.toolsplugin.utils.ColorUtils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CooldownManager {
     private final ConfigManager configManager;
 
-    // Struktura: UUID gracza -> (nazwa komendy -> timestamp wygaśnięcia)
+    // Zmiana na ConcurrentHashMap dla bezpieczeństwa wątkowego
     private final Map<UUID, Map<String, Long>> cooldowns;
 
     public CooldownManager(ConfigManager configManager) {
         this.configManager = configManager;
-        this.cooldowns = new HashMap<>();
+        // Używamy ConcurrentHashMap dla bezpieczeństwa wątkowego
+        this.cooldowns = new ConcurrentHashMap<>();
     }
 
     /**
@@ -34,36 +36,24 @@ public class CooldownManager {
         }
 
         UUID uuid = player.getUniqueId();
-
-        // Sprawdź czy gracz ma jakiekolwiek cooldowny
-        if (!cooldowns.containsKey(uuid)) {
-            return false;
-        }
-
         Map<String, Long> playerCooldowns = cooldowns.get(uuid);
 
-        // Sprawdź czy ma cooldown na tej konkretnej komendzie
-        if (!playerCooldowns.containsKey(command)) {
+        if (playerCooldowns == null) {
             return false;
         }
 
-        long expireTime = playerCooldowns.get(command);
-        long currentTime = System.currentTimeMillis();
+        // Używamy computeIfPresent, aby bezpiecznie usunąć wygasłe cooldowny w mapie gracza
+        return playerCooldowns.computeIfPresent(command, (cmd, expireTime) -> {
+            long currentTime = System.currentTimeMillis();
 
-        // Jeśli cooldown wygasł, usuń go
-        if (currentTime >= expireTime) {
-            playerCooldowns.remove(command);
-
-            // Usuń całą mapę gracza jeśli pusta
-            if (playerCooldowns.isEmpty()) {
-                cooldowns.remove(uuid);
+            if (currentTime >= expireTime) {
+                // Cooldown wygasł, usuwamy go (zwracamy null)
+                return null;
+            } else {
+                // Cooldown aktywny, zachowujemy
+                return expireTime;
             }
-
-            return false;
-        }
-
-        // Cooldown aktywny
-        return true;
+        }) != null;
     }
 
     /**
@@ -72,7 +62,6 @@ public class CooldownManager {
     public void setCooldown(Player player, String command) {
         int cooldownSeconds = configManager.getCooldown(command);
 
-        // Jeśli cooldown = 0, nie ustawiaj
         if (cooldownSeconds <= 0) {
             return;
         }
@@ -80,8 +69,8 @@ public class CooldownManager {
         UUID uuid = player.getUniqueId();
         long expireTime = System.currentTimeMillis() + (cooldownSeconds * 1000L);
 
-        // Pobierz lub utwórz mapę cooldownów gracza
-        cooldowns.putIfAbsent(uuid, new HashMap<>());
+        // Używamy computeIfAbsent i put, aby bezpiecznie ustawić wartość
+        cooldowns.putIfAbsent(uuid, new ConcurrentHashMap<>());
         cooldowns.get(uuid).put(command, expireTime);
     }
 
@@ -89,21 +78,19 @@ public class CooldownManager {
      * Pobiera pozostały czas cooldownu w sekundach
      */
     public int getRemainingCooldown(Player player, String command) {
-        UUID uuid = player.getUniqueId();
+        Map<String, Long> playerCooldowns = cooldowns.get(player.getUniqueId());
 
-        if (!cooldowns.containsKey(uuid)) {
+        if (playerCooldowns == null) {
             return 0;
         }
 
-        Map<String, Long> playerCooldowns = cooldowns.get(uuid);
+        Long expireTime = playerCooldowns.get(command);
 
-        if (!playerCooldowns.containsKey(command)) {
+        if (expireTime == null) {
             return 0;
         }
 
-        long expireTime = playerCooldowns.get(command);
-        long currentTime = System.currentTimeMillis();
-        long remaining = expireTime - currentTime;
+        long remaining = expireTime - System.currentTimeMillis();
 
         if (remaining <= 0) {
             return 0;
@@ -117,14 +104,14 @@ public class CooldownManager {
      * Ręcznie usuwa cooldown (np. przez admina)
      */
     public void removeCooldown(Player player, String command) {
-        UUID uuid = player.getUniqueId();
+        Map<String, Long> playerCooldowns = cooldowns.get(player.getUniqueId());
 
-        if (cooldowns.containsKey(uuid)) {
-            cooldowns.get(uuid).remove(command);
+        if (playerCooldowns != null) {
+            playerCooldowns.remove(command);
 
-            // Usuń całą mapę gracza jeśli pusta
-            if (cooldowns.get(uuid).isEmpty()) {
-                cooldowns.remove(uuid);
+            // OPTYMALIZACJA: Usuń całego gracza jeśli mapa pusta
+            if (playerCooldowns.isEmpty()) {
+                cooldowns.remove(player.getUniqueId());
             }
         }
     }
@@ -152,35 +139,27 @@ public class CooldownManager {
     public boolean checkCooldown(Player player, String command) {
         if (hasCooldown(player, command)) {
             sendCooldownMessage(player, command);
-            return true; // Blokuj wykonanie
+            return true;
         }
-        return false; // Pozwól na wykonanie
+        return false;
     }
 
     /**
      * Czyści wszystkie wygasłe cooldowny (optymalizacja)
-     * Można wywołać co jakiś czas (np. co 5 minut)
      */
     public void cleanupExpiredCooldowns() {
         long currentTime = System.currentTimeMillis();
-        int removed = 0;
 
-        for (UUID uuid : new HashMap<>(cooldowns).keySet()) {
-            Map<String, Long> playerCooldowns = cooldowns.get(uuid);
+        // Iteracja jest bezpieczna dzięki ConcurrentHashMap
+        cooldowns.forEach((uuid, playerCooldowns) -> {
 
-            // Usuń wygasłe cooldowny
+            // Usuń wygasłe cooldowny z wewnętrznej mapy
             playerCooldowns.entrySet().removeIf(entry -> entry.getValue() <= currentTime);
 
             // Jeśli mapa pusta, usuń całego gracza
             if (playerCooldowns.isEmpty()) {
                 cooldowns.remove(uuid);
-                removed++;
             }
-        }
-
-        if (removed > 0) {
-            // Opcjonalnie: log do konsoli
-            // plugin.getLogger().info("Wyczyszczono " + removed + " graczy z cooldownów");
-        }
+        });
     }
 }

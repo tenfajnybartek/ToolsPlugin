@@ -25,47 +25,25 @@ public class TPSCommand extends BaseCommand {
             return true;
         }
 
-        // ------------------ 1. TPS ------------------
-
-        // Próba użycia refleksji na klasie CraftServer (standardowe rozwiązanie dla Bukkit/Spigot/Paper)
-        double[] tps;
-        try {
-            Object server = Bukkit.getServer().getClass().getMethod("getServer").invoke(Bukkit.getServer());
-            tps = (double[]) server.getClass().getField("recentTps").get(server);
-        } catch (Exception e) {
-            // Fallback w przypadku błędu (np. inna implementacja serwera)
-            tps = new double[]{20.0, 20.0, 20.0};
-        }
+        double[] tps = Bukkit.getServer().getTPS();
 
         String tps1min = formatTps(tps[0]);
         String tps5min = formatTps(tps[1]);
         String tps15min = formatTps(tps[2]);
 
-        // ------------------ 2. PAMIĘĆ (RAM) ------------------
+        sendMessage(sender, "&e&lTPS:");
+        sendMessage(sender, "&b 1 min: &f" + tps1min + " &7/ &b5 min: &f" + tps5min + " &7/ &b15 min: &f" + tps15min);
+
 
         MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
-        // Konwersja na megabajty (MB)
         long usedMemory = memoryBean.getHeapMemoryUsage().getUsed() / 1048576;
         long maxMemory = memoryBean.getHeapMemoryUsage().getMax() / 1048576;
+        sendMessage(sender, "&e&lPamięć (RAM):");
+        sendMessage(sender, "&b Zużycie: &f" + usedMemory + "MB &7/ &bMaks: &f" + maxMemory + "MB");
 
         // ------------------ 3. GRACZE ------------------
-
         int onlinePlayers = Bukkit.getOnlinePlayers().size();
         int maxPlayers = Bukkit.getMaxPlayers();
-
-        // ------------------ WYSYŁANIE RAPORTU ------------------
-
-        sendMessage(sender, "&8--- &b&lDIAGNOSTYKA SERWERA &8---");
-
-        // TPS
-        sendMessage(sender, "&e&lTPS (Tick Per Second):");
-        sendMessage(sender, String.format("&b 1m: &f%s &b| 5m: &f%s &b| 15m: &f%s", tps1min, tps5min, tps15min));
-
-        // Pamięć
-        sendMessage(sender, "&e&lPamięć (RAM):");
-        sendMessage(sender, String.format("&b Użycie: &f%dMB &7/ &f%dMB", usedMemory, maxMemory));
-
-        // Gracze
         sendMessage(sender, "&e&lGracze:");
         sendMessage(sender, String.format("&b Online: &f%d&7/&f%d", onlinePlayers, maxPlayers));
 
@@ -78,17 +56,9 @@ public class TPSCommand extends BaseCommand {
      * Formatuje wartość TPS i koloruje ją w zależności od kondycji.
      */
     private String formatTps(double tps) {
-        String color;
-        if (tps >= 19.0) { // Zmienione z 18.0 na 19.0 dla surowszej oceny 'doskonale'
-            color = "&a"; // Zielony (doskonale)
-        } else if (tps >= 16.0) { // Zmienione z 15.0 na 16.0
-            color = "&e"; // Żółty (akceptowalny)
-        } else {
-            color = "&c"; // Czerwony (lagi)
-        }
-
-        if (tps > 20.0) tps = 20.0;
-
-        return ColorUtils.colorize(color + FORMATTER.format(tps));
+        String formatted = FORMATTER.format(tps);
+        if (tps >= 19.5) return "&a" + formatted;
+        if (tps >= 15.0) return "&e" + formatted;
+        return "&c" + formatted;
     }
 }
