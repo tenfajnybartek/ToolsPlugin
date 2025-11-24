@@ -15,13 +15,13 @@ import java.util.stream.Collectors;
 public class UnMuteCommand extends BaseCommand {
 
     public UnMuteCommand() {
-        super("unmute", "Odcisza gracza", "/unmute <nick>", "tools.unmute", null);
+        super("unmute", "Odcisza gracza", "/unmute <nick>", "tools.cmd.unmute", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length != 1) {
-            sendMessage(sender, getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -30,17 +30,14 @@ public class UnMuteCommand extends BaseCommand {
 
         mm.unmutePlayer(target.getUniqueId())
                 .thenAccept(wasMuted -> {
-                    // Przełączenie na Główny Wątek do operacji Bukkit API
                     ToolsPlugin.getInstance().getServer().getScheduler().runTask(ToolsPlugin.getInstance(), () -> {
                         if (wasMuted) {
                             sendMessage(sender, "&aPomyślnie odciszono gracza &e" + target.getName() + "&a.");
 
-                            // Powiadomienie gracza, jeśli jest online
                             if (target.isOnline() && target.getPlayer() != null) {
                                 target.getPlayer().sendMessage(ColorUtils.toComponent("&aZostałeś odciszony!"));
                             }
                         } else {
-                            // Ten komunikat obsłuży teraz także przypadek, gdy gracz nigdy nie grał
                             sendMessage(sender, "&cGracz &e" + target.getName() + " &cnie miał żadnego aktywnego wyciszenia.");
                         }
                     });
@@ -51,7 +48,6 @@ public class UnMuteCommand extends BaseCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
-            // Podpowiadanie graczy
             return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))

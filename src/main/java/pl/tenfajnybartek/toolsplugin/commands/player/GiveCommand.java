@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 public class GiveCommand extends BaseCommand {
 
     public GiveCommand() {
-        super("give", "Daje graczowi przedmiot", "/give <gracz> <item> [ilość]", "tfbhc.cmd.give", null);
+        super("give", "Daje graczowi przedmiot", "/give <gracz> <item> [ilość]", "tools.cmd.give", null);
     }
 
     @Override
@@ -22,14 +22,14 @@ public class GiveCommand extends BaseCommand {
 
         // Komenda wymaga minimum 2 argumentów: gracz i przedmiot
         if (args.length < 2 || args.length > 3) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
         // 1. Walidacja gracza docelowego
         Player target = Bukkit.getPlayer(args[0]);
         if (target == null) {
-            sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+            sendPlayerOffline(sender, args[0]);
             return true;
         }
 
@@ -97,7 +97,7 @@ public class GiveCommand extends BaseCommand {
         }
         if (args.length == 3) {
             // Podpowiadanie ilości
-            return Arrays.asList("1", "16", "64").stream()
+            return Arrays.asList("1", "16", "32", "64").stream()
                     .filter(s -> s.startsWith(args[2]))
                     .collect(Collectors.toList());
         }

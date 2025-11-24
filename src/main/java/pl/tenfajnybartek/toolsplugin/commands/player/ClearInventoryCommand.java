@@ -11,16 +11,15 @@ import java.util.stream.Collectors;
 public class ClearInventoryCommand extends BaseCommand {
 
     public ClearInventoryCommand() {
-        super("clearinventory", "Czyści ekwipunek gracza", "/clearinventory [gracz]", "tfbhc.cmd.clearinv", new String[]{"clear", "ci", "clearinv"});
+        super("clearinventory", "Czyści ekwipunek gracza", "/clearinventory [gracz]", "tools.cmd.clearinv", new String[]{"clear", "ci", "clearinv"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        // /clear - czyści swój ekwipunek
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
-                sendMessage(sender, "&eUżycie: " + getUsage());
+                sendOnlyPlayer(sender);
+                sendUsage(sender);
                 return true;
             }
 
@@ -30,16 +29,15 @@ public class ClearInventoryCommand extends BaseCommand {
             return true;
         }
 
-        // /clear <gracz> - czyści ekwipunek innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do czyszczenia ekwipunku innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -52,7 +50,7 @@ public class ClearInventoryCommand extends BaseCommand {
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

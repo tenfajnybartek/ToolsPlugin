@@ -21,7 +21,7 @@ public class VanishCommand extends BaseCommand {
                 "Przełącza tryb ukrycia (niewidoczny dla graczy bez permisji).",
                 "/vanish [gracz]",
                 VanishManager.PERM_BASE,
-                null
+                new String[]{"v"}
         );
         this.vanishManager = ToolsPlugin.getInstance().getVanishManager();
     }
@@ -35,12 +35,12 @@ public class VanishCommand extends BaseCommand {
 
         if (args.length == 0) {
             if (!(sender instanceof Player)) {
-                sendMessage(sender, "&cTylko gracz może użyć /vanish bez argumentów.");
+                sendOnlyPlayer(sender);
                 return true;
             }
             Player player = (Player) sender;
             if (!player.hasPermission(VanishManager.PERM_BASE)) {
-                sendMessage(player, "&cBrak uprawnień.");
+                sendNoPermission(sender);
                 return true;
             }
             vanishManager.toggleSelf(player);

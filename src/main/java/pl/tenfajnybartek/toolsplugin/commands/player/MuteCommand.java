@@ -17,18 +17,18 @@ import static pl.tenfajnybartek.toolsplugin.utils.ColorUtils.toComponent;
 public class MuteCommand extends BaseCommand {
 
     public MuteCommand() {
-        super("mute", "Wycisza gracza", "/mute <nick> [czas] [powód]", "tools.mute", null);
+        super("mute", "Wycisza gracza", "/mute <nick> [czas] [powód]", "tools.cmd.mute", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą wyciszać.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length < 1) {
-            sendMessage(sender, getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -36,7 +36,6 @@ public class MuteCommand extends BaseCommand {
         final OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
         final MuteManager mm = ToolsPlugin.getInstance().getMuteManager();
 
-        // Logika parsowania czasu i powodu (identyczna jak w BanCommand)
         String timeString;
         String reason;
 
@@ -58,21 +57,17 @@ public class MuteCommand extends BaseCommand {
         final String finalTimeString = timeString;
         final String finalReason = reason;
 
-        // Wykonanie wyciszenia asynchronicznie
         mm.mutePlayer(target, muter, finalTimeString, finalReason)
                 .thenAccept(record -> {
                     if (record != null) {
 
-                        // Przełączenie na Główny Wątek do operacji Bukkit API
                         ToolsPlugin.getInstance().getServer().getScheduler().runTask(ToolsPlugin.getInstance(), () -> {
 
-                            // Powiadomienie gracza (bez kicka - to jest mute)
                             if (target.isOnline() && target.getPlayer() != null) {
                                 target.getPlayer().sendMessage(record.getMuteMessage());
                                 sendMessage(sender, "&aWyciszyłeś gracza &e" + target.getName() + " &ana: &e" + (record.isPermanent() ? "NA ZAWSZE" : TimeUtils.formatDuration(record.getExpireTime())));
                             }
 
-                            // Broadcast do serwera
                             String timeInfo = record.isPermanent() ? "&cNA ZAWSZE" : "&e" + TimeUtils.formatDuration(record.getExpireTime());
                             String broadcastRaw = "&4[MUTE]&c Gracz &e" + target.getName() + " &czostał wyciszony przez &e" + muter.getName() + " &cna: " + timeInfo + "&c. Powód: &7" + record.getReason();
 

@@ -17,13 +17,13 @@ import java.util.stream.Collectors;
 public class BanInfoCommand extends BaseCommand {
 
     public BanInfoCommand() {
-        super("baninfo", "Wyświetla historię i aktualny ban gracza", "/baninfo <nick>", "tools.baninfo", null);
+        super("baninfo", "Wyświetla historię i aktualny ban gracza", "/baninfo <nick>", "tools.cmd.baninfo", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length != 1) {
-            sendMessage(sender, getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -32,15 +32,12 @@ public class BanInfoCommand extends BaseCommand {
 
         bm.getAllBans(target.getUniqueId())
                 .thenAccept(records -> {
-                    // UWAGA: target.getName() jest używany w lambdzie, ale OfflinePlayer jest efektywnie finalny.
 
                     if (records.isEmpty()) {
-                        // Zwraca String
                         sendMessage(sender, "&aGracz &e" + target.getName() + " &anie ma historii banów.");
                         return;
                     }
 
-                    // Zwraca String (Zakładamy, że sendMessage(String) koloruje)
                     sendMessage(sender, "&7--- &6Historia Banów dla &e" + target.getName() + " &7---");
 
                     for (int i = 0; i < records.size(); i++) {
@@ -48,7 +45,6 @@ public class BanInfoCommand extends BaseCommand {
                         String status = record.isActive() && !record.hasExpired() ? "&4AKTYWNY" : "&aNIEAKTYWNY";
                         String time = record.isPermanent() ? "&cPERM" : TimeUtils.formatDateTime(record.getExpireTime());
 
-                        // Zwracamy String do sendMessage
                         sendMessage(sender, "&7#&f" + (i + 1) + ". Status: " + status);
                         sendMessage(sender, "  &7| Data: &f" + TimeUtils.formatDateTime(record.getBanTime()));
                         sendMessage(sender, "  &7| Wygasa: " + time);
@@ -62,7 +58,6 @@ public class BanInfoCommand extends BaseCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
-            // Podpowiadanie graczy
             return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))

@@ -15,16 +15,15 @@ public class GodCommand extends BaseCommand {
     private static final Map<UUID, Boolean> godMode = new HashMap<>();
 
     public GodCommand() {
-        super("god", "Włącza/wyłącza tryb nieśmiertelności", "/god [gracz]", "tfbhc.cmd.god", new String[]{"godmode"});
+        super("god", "Włącza/wyłącza tryb nieśmiertelności", "/god [gracz]", "tools.cmd.god", new String[]{"godmode"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        // /god - przełącza god mode dla siebie
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
-                sendMessage(sender, "&eUżycie: " + getUsage());
+                sendOnlyPlayer(sender);
+                sendUsage(sender);
                 return true;
             }
 
@@ -39,16 +38,15 @@ public class GodCommand extends BaseCommand {
             return true;
         }
 
-        // /god <gracz> - przełącza god mode dla innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do zmiany god mode innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -68,7 +66,7 @@ public class GodCommand extends BaseCommand {
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

@@ -21,14 +21,14 @@ public class BroadCastCommand extends BaseCommand {
     private static final int ACTIONBAR_DURATION_SECONDS = 3; // Nowy czas trwania paska
 
     public BroadCastCommand() {
-        super("broadcast", "Wysyła ogłoszenie do wszystkich", "/broadcast <chat/actionbar/title> <wiadomość>", "tfbhc.cmd.broadcast", new String[]{"ogłoszenie", "bc"});
+        super("broadcast", "Wysyła ogłoszenie do wszystkich", "/broadcast <chat/actionbar/title> <wiadomość>", "tools.cmd.broadcast", new String[]{"ogłoszenie", "bc"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (args.length < 2) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -41,20 +41,16 @@ public class BroadCastCommand extends BaseCommand {
 
         String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-        // Używamy prefixu, ale w Title będzie on tytułem, nie częścią wiadomości
         String prefixComponent = DEFAULT_PREFIX;
         String fullChatMessage = prefixComponent + message;
 
-        // 1. CHAT
         if (type.equals("chat")) {
             Bukkit.getServer().sendMessage(ColorUtils.toComponent(fullChatMessage));
 
-            // 2. ACTIONBAR
         } else if (type.equals("actionbar")) {
-            final int repeats = ACTIONBAR_DURATION_SECONDS * 20 / 4; // Wysłanie co 4 ticki przez X sekund
+            final int repeats = ACTIONBAR_DURATION_SECONDS * 20 / 4;
             final net.kyori.adventure.text.Component component = ColorUtils.toComponent(fullChatMessage);
 
-            // Logika wielokrotnego wysyłania (BukkitRunnable)
             new BukkitRunnable() {
                 int count = 0;
 
@@ -64,31 +60,26 @@ public class BroadCastCommand extends BaseCommand {
                         this.cancel();
                         return;
                     }
-                    // Actionbar jest wysyłany indywidualnie do każdego gracza
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendActionBar(component);
                     }
                 }
-            }.runTaskTimer(ToolsPlugin.getInstance(), 0L, 4L); // Start natychmiast, powtarzaj co 4 ticki
+            }.runTaskTimer(ToolsPlugin.getInstance(), 0L, 4L);
 
             sendMessage(sender, prefixComponent + "&7Wysłano ogłoszenie na Actionbar (przez " + ACTIONBAR_DURATION_SECONDS + "s).");
 
-            // 3. TITLE
         } else if (type.equals("title")) {
 
-            // NOWE CZASY: 4 sekundy 'stay'
-            Duration fadeIn = Duration.ofMillis(500);  // 0.5s
-            Duration stay = Duration.ofSeconds(4);     // 4.0s
-            Duration fadeOut = Duration.ofSeconds(1);    // 1.0s
+            Duration fadeIn = Duration.ofMillis(500);
+            Duration stay = Duration.ofSeconds(4);
+            Duration fadeOut = Duration.ofSeconds(1);
 
-            // NOWA LOGIKA: Prefix jako Tytuł, Wiadomość jako Podtytuł
             Title title = Title.title(
-                    ColorUtils.toComponent(prefixComponent),    // Główny tytuł: [OGŁOSZENIE]
-                    ColorUtils.toComponent(message),            // Podtytuł: Wiadomość
+                    ColorUtils.toComponent(prefixComponent),
+                    ColorUtils.toComponent(message),
                     Title.Times.times(fadeIn, stay, fadeOut)
             );
 
-            // Wysyłamy tytuł do każdego gracza
             for (Player player : Bukkit.getOnlinePlayers()) {
                 player.showTitle(title);
             }

@@ -14,18 +14,18 @@ import java.util.UUID;
 public class ReplyCommand extends BaseCommand {
 
     public ReplyCommand() {
-        super("reply", "Odpowiada ostatniemu rozmówcy", "/r <wiadomość>", "tools.msg", new String[]{"r"});
+        super("reply", "Odpowiada ostatniemu rozmówcy", "/r <wiadomość>", "tools.cmd.reply", new String[]{"r"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -48,7 +48,7 @@ public class ReplyCommand extends BaseCommand {
         if (target == null || !target.isOnline()) {
             sendMessage(player, "&cTwój ostatni rozmówca jest offline.");
             user.setLastMessageFrom(null);
-            userManager.saveUserAsync(user); // NOWE
+            userManager.saveUserAsync(user);
             return true;
         }
 

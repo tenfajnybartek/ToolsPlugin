@@ -9,19 +9,19 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class HatCommand extends BaseCommand {
 
     public HatCommand() {
-        super("hat", "Zakłada trzymany przedmiot na głowę", "/hat", "tfbhc.cmd.hat", new String[]{"czapka"});
+        super("hat", "Zakłada trzymany przedmiot na głowę", "/hat", "tools.cmd.hat", new String[]{"czapka"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 

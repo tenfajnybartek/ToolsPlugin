@@ -13,26 +13,25 @@ import java.util.stream.Collectors;
 public class ItemGiveCommand extends BaseCommand {
 
     public ItemGiveCommand() {
-        super("itemgive", "Daje graczowi przedmioty (tylko dla siebie)", "/itemgive <przedmiot> <ilość>", "tfbhc.cmd.itemgive", new String[]{"igive"});
+        super("itemgive", "Daje graczowi przedmioty (tylko dla siebie)", "/itemgive <przedmiot> <ilość>", "tools.cmd.itemgive", new String[]{"igive"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 2) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
         Player player = getPlayer(sender);
         String materialName = args[0].toUpperCase();
 
-        // 1. Walidacja nazwy przedmiotu
         Material material;
         try {
             material = Material.valueOf(materialName);
@@ -41,7 +40,6 @@ public class ItemGiveCommand extends BaseCommand {
             return true;
         }
 
-        // 2. Walidacja ilości
         int amount;
         try {
             amount = Integer.parseInt(args[1]);
@@ -55,15 +53,12 @@ public class ItemGiveCommand extends BaseCommand {
             return true;
         }
 
-        // 3. Dodanie przedmiotu
         ItemStack item = new ItemStack(material, amount);
 
-        // Dodanie do ekwipunku z obsługą przepełnienia (drop na ziemię)
         player.getInventory().addItem(item).forEach((index, excessItem) -> {
             player.getWorld().dropItemNaturally(player.getLocation(), excessItem);
         });
 
-        // 4. Wysyłanie wiadomości zwrotnych
         sendMessage(sender, String.format("&aOtrzymałeś &e%d x %s&a.", amount, material.name()));
 
         return true;
@@ -72,15 +67,13 @@ public class ItemGiveCommand extends BaseCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
-            // Podpowiadanie nazw przedmiotów (filtracja)
             return Arrays.stream(Material.values())
                     .map(Enum::name)
                     .filter(name -> name.startsWith(args[0].toUpperCase()))
                     .collect(Collectors.toList());
         }
         if (args.length == 2) {
-            // Podpowiadanie ilości
-            return Arrays.asList("1", "32", "64").stream()
+            return Arrays.asList("1", "16", "32", "64").stream()
                     .filter(s -> s.startsWith(args[1]))
                     .collect(Collectors.toList());
         }

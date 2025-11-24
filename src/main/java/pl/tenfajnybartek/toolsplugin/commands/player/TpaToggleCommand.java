@@ -10,13 +10,13 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class TpaToggleCommand extends BaseCommand {
 
     public TpaToggleCommand() {
-        super("tpatoggle", "Włącza/wyłącza otrzymywanie próśb o teleportację", "/tpatoggle", "tools.tpatoggle", new String[]{"tptoggle"});
+        super("tpatoggle", "Włącza/wyłącza otrzymywanie próśb o teleportację", "/tpatoggle", "tools.cmd.tpatoggle", new String[]{"tptoggle"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
@@ -32,7 +32,6 @@ public class TpaToggleCommand extends BaseCommand {
         boolean newState = !user.isTeleportToggle();
         user.setTeleportToggle(newState);
 
-        // NOWE
         userManager.saveUserAsync(user);
 
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";

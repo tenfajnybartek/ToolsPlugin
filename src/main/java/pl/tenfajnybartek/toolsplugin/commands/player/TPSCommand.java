@@ -3,7 +3,6 @@ package pl.tenfajnybartek.toolsplugin.commands.player;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
-import pl.tenfajnybartek.toolsplugin.utils.ColorUtils;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -14,14 +13,14 @@ public class TPSCommand extends BaseCommand {
     private static final DecimalFormat FORMATTER = new DecimalFormat("0.00");
 
     public TPSCommand() {
-        super("tps", "Wyświetla TPS serwera oraz obciążenie", "/tps", "tfbhc.cmd.tps", new String[]{"diag"});
+        super("diagnostic", "Wyświetla TPS serwera oraz obciążenie", "/diag", "tools.cmd.diag", new String[]{"diag"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -51,10 +50,6 @@ public class TPSCommand extends BaseCommand {
 
         return true;
     }
-
-    /**
-     * Formatuje wartość TPS i koloruje ją w zależności od kondycji.
-     */
     private String formatTps(double tps) {
         String formatted = FORMATTER.format(tps);
         if (tps >= 19.5) return "&a" + formatted;

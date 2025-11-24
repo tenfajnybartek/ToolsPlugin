@@ -9,19 +9,19 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class WorkbenchCommand extends BaseCommand {
 
     public WorkbenchCommand() {
-        super("workbench", "Otwiera wirtualny stół rzemieślniczy", "/workbench", "tfbhc.cmd.workbench", new String[]{"craft", "crafting"});
+        super("workbench", "Otwiera wirtualny stół rzemieślniczy", "/workbench", "tools.cmd.workbench", new String[]{"craft", "crafting"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 

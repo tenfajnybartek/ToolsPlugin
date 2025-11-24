@@ -15,18 +15,18 @@ import java.util.stream.Collectors;
 public class TpaCommand extends BaseCommand {
 
     public TpaCommand() {
-        super("tpa", "Wysyła prośbę o teleportację do gracza", "/tpa <gracz>", "tools.tpa", null);
+        super("tpa", "Wysyła prośbę o teleportację do gracza", "/tpa <gracz>", "tools.cmd.tpa", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 1) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -36,7 +36,7 @@ public class TpaCommand extends BaseCommand {
         UserManager um = ToolsPlugin.getInstance().getUserManager();
 
         if (target == null || !target.isOnline()) {
-            sendMessage(player, "&cGracz &e" + args[0] + "&c jest offline lub nie istnieje.");
+            sendPlayerOffline(sender, args[0]);
             return true;
         }
 
@@ -45,7 +45,6 @@ public class TpaCommand extends BaseCommand {
             return true;
         }
 
-        // 1. Sprawdzenie tpatoggle u celu
         User targetUser = um.getUser(target);
         if (targetUser == null) {
             sendMessage(player, "&cWystąpił wewnętrzny błąd. Spróbuj się przelogować.");
@@ -56,18 +55,15 @@ public class TpaCommand extends BaseCommand {
             return true;
         }
 
-        // 2. Sprawdzenie, czy prośba już istnieje
         if (tm.getTpaRequest(target) != null) {
             sendMessage(player, "&cTen gracz ma już oczekującą prośbę o teleportację.");
             return true;
         }
 
-        // 3. Dodanie prośby i powiadomienie
         tm.addTpaRequest(player, target);
 
         sendMessage(player, "&aWysłano prośbę o teleportację do &e" + target.getName() + "&a. Wygasa za 60s.");
 
-        // Wiadomość dla odbiorcy z instrukcją
         String targetMsg = "&e" + player.getName() + "&a prosi o teleportację do Ciebie. Wpisz &e/tpaccept&a, aby zaakceptować, lub &c/tpadeny&a, aby odrzucić.";
         sendMessage(target, targetMsg);
 

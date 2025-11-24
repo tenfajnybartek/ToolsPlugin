@@ -15,13 +15,13 @@ import java.util.stream.Collectors;
 public class HomeCommand extends BaseCommand {
 
     public HomeCommand() {
-        super("home", "Teleportuje do domu", "/home [nazwa]", "tfbhc.cmd.home", new String[]{"h"});
+        super("home", "Teleportuje do domu", "/home [nazwa]", "tools.cmd.home", new String[]{"h"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
@@ -30,10 +30,8 @@ public class HomeCommand extends BaseCommand {
         TeleportManager teleportManager = ToolsPlugin.getInstance().getTeleportManager();
         CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
-        // /home - teleportuj do domyślnego home ("home")
         String homeName = args.length == 0 ? "home" : args[0].toLowerCase();
 
-        // 1. Sprawdź, czy home istnieje w cache
         if (!homeManager.hasHome(player, homeName)) {
             if (homeManager.getHomeCount(player) == 0) {
                 sendMessage(sender, "&cNie masz żadnych domów! Użyj &e/sethome &caby utworzyć.");
@@ -44,27 +42,14 @@ public class HomeCommand extends BaseCommand {
             return true;
         }
 
-        // 2. Sprawdź cooldown
-        if (cooldownManager.checkCooldown(player, "home")) {
-            return true;
-        }
-
-        // 3. Pobierz lokalizację z cache
         Location homeLocation = homeManager.getHome(player, homeName);
 
-        // 🚨 KOREKTA: Sprawdzenie, czy świat istnieje / lokalizacja jest poprawna
         if (homeLocation == null || homeLocation.getWorld() == null) {
             sendMessage(player, "&cŚwiat, w którym znajduje się dom &e" + homeName + "&c, nie jest załadowany! Zgłoś to administracji.");
-            // Opcjonalnie: możesz tutaj dać opcję usunięcia tego home'a z DB, ale lepiej zostawić to adminom.
             return true;
         }
 
-        // 4. Teleportuj z delay
         teleportManager.teleport(player, homeLocation, "&aPrzeteleportowano do domu &e" + homeName);
-
-        // 5. Ustaw cooldown
-        cooldownManager.setCooldown(player, "home");
-
         return true;
     }
 
@@ -73,8 +58,6 @@ public class HomeCommand extends BaseCommand {
         if (args.length == 1 && isPlayer(sender)) {
             Player player = getPlayer(sender);
             HomeManager homeManager = ToolsPlugin.getInstance().getHomeManager();
-
-            // TabComplete bazuje na szybkim odczycie cache
             return homeManager.getHomeNames(player).stream()
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());

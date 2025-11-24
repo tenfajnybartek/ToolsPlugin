@@ -109,14 +109,16 @@ public class CommandManager {
         public boolean execute(CommandSender sender, String label, String[] args) {
             if (baseCommand.getPermission() != null && !baseCommand.getPermission().isEmpty()) {
                 if (!sender.hasPermission(baseCommand.getPermission())) {
-                    sender.sendMessage(ColorUtils.colorize("&cNie masz uprawnień do użycia tej komendy!"));
+                    var lm = ToolsPlugin.getInstance().getLanguageManager();
+                    sender.sendMessage(lm.formatNoPermission(baseCommand.getPermission()));
                     return true;
                 }
             }
-
             try {
                 return baseCommand.execute(sender, args);
             } catch (Exception e) {
+                var lm = ToolsPlugin.getInstance().getLanguageManager();
+                // Możesz później dodać klucz core.command-error
                 sender.sendMessage(ColorUtils.colorize("&cWystąpił błąd podczas wykonywania komendy!"));
                 plugin.getLogger().severe("Błąd w komendzie /" + baseCommand.getName() + ":");
                 e.printStackTrace();

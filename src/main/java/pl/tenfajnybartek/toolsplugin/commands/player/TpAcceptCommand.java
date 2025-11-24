@@ -14,13 +14,13 @@ import java.util.UUID;
 public class TpAcceptCommand extends BaseCommand {
 
     public TpAcceptCommand() {
-        super("tpaccept", "Akceptuje prośbę o teleportację", "/tpaccept", "tools.tpaccept", null);
+        super("tpaccept", "Akceptuje prośbę o teleportację", "/tpaccept", "tools.cmd.tpaccept", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 

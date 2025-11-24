@@ -15,22 +15,20 @@ import java.util.stream.Collectors;
 public class WarpCommand extends BaseCommand {
 
     public WarpCommand() {
-        super("warp", "Teleportuje do warpa", "/warp <nazwa>", "tfbhc.cmd.warp", new String[]{"warps"});
+        super("warp", "Teleportuje do warpa", "/warp <nazwa>", "tools.cmd.warp", new String[]{"warps"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         Player player = getPlayer(sender);
         WarpManager warpManager = ToolsPlugin.getInstance().getWarpManager();
         TeleportManager teleportManager = ToolsPlugin.getInstance().getTeleportManager();
-        CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
-        // /warp - lista warpów
         if (args.length == 0) {
             if (warpManager.getWarpCount() == 0) {
                 sendMessage(sender, "&cNie ma żadnych warpów na serwerze!");
@@ -43,36 +41,21 @@ public class WarpCommand extends BaseCommand {
             return true;
         }
 
-        // /warp <nazwa>
-        // Zawsze używamy małych liter do odczytu z menedżera
         String warpName = args[0].toLowerCase();
 
-        // 1. Sprawdź, czy warp istnieje
         if (!warpManager.warpExists(warpName)) {
             sendMessage(sender, "&cWarp &e" + warpName + " &cnie istnieje!");
             return true;
         }
 
-        // 2. Sprawdź cooldown
-        if (cooldownManager.checkCooldown(player, "warp")) {
-            return true;
-        }
-
-        // 3. Pobierz lokalizację z cache
         Location warpLocation = warpManager.getWarp(warpName);
 
-        // 🚨 KOREKTA: Zabezpieczenie przed teleportacją do nieistniejącego świata
         if (warpLocation == null || warpLocation.getWorld() == null) {
             sendMessage(player, "&cŚwiat warpa &e" + warpName + "&c nie jest załadowany! Zgłoś to administracji.");
-            // Opcjonalnie: można tutaj dać opcję usunięcia tego warpa.
             return true;
         }
 
-        // 4. Teleportuj z delay
         teleportManager.teleport(player, warpLocation, "&aPrzeteleportowano do warpa &e" + warpName);
-
-        // 5. Ustaw cooldown
-        cooldownManager.setCooldown(player, "warp");
 
         return true;
     }

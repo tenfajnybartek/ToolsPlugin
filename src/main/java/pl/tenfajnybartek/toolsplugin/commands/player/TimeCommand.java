@@ -15,7 +15,7 @@ public class TimeCommand extends BaseCommand {
     private static final List<String> TIME_ALIASES = Arrays.asList("day", "night", "noon", "midnight", "6000", "18000");
 
     public TimeCommand() {
-        super("time", "Zmienia czas w świecie", "/time <set/add> <czas>", "tfbhc.cmd.time", new String[]{"czas"});
+        super("time", "Zmienia czas w świecie", "/time <set/add> <czas>", "tools.cmd.time", new String[]{"czas"});
     }
 
     @Override
@@ -28,7 +28,7 @@ public class TimeCommand extends BaseCommand {
         }
 
         if (args.length < 2) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 

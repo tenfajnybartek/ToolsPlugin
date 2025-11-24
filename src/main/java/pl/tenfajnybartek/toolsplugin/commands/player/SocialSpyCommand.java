@@ -13,13 +13,13 @@ import java.util.List;
 public class SocialSpyCommand extends BaseCommand {
 
     public SocialSpyCommand() {
-        super("socialspy", "Włącza/wyłącza podsłuchiwanie prywatnych wiadomości", "/socialspy", "tools.socialspy", null);
+        super("socialspy", "Włącza/wyłącza podsłuchiwanie prywatnych wiadomości", "/socialspy", "tools.cmd.socialspy", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
@@ -35,7 +35,6 @@ public class SocialSpyCommand extends BaseCommand {
         boolean newState = !user.isSocialSpy();
         user.setSocialSpy(newState);
 
-        // NOWE: asynchroniczny zapis
         userManager.saveUserAsync(user);
 
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";

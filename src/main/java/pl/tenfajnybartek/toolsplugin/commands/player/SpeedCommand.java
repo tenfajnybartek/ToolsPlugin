@@ -14,13 +14,13 @@ public class SpeedCommand extends BaseCommand {
     private static final List<String> SPEED_TYPES = Arrays.asList("walk", "fly");
 
     public SpeedCommand() {
-        super("speed", "Zmienia prędkość chodzenia/latania", "/speed <walk/fly> <1-10> [gracz]", "tfbhc.cmd.speed", new String[]{"prędkość"});
+        super("speed", "Zmienia prędkość chodzenia/latania", "/speed <walk/fly> <1-10> [gracz]", "tools.cmd.speed", new String[]{"prędkość"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -46,9 +46,7 @@ public class SpeedCommand extends BaseCommand {
 
         Player target;
 
-        // 1. Sprawdzanie gracza docelowego
         if (args.length == 2) {
-            // Brak argumentu [gracz] - dotyczy siebie
             if (!isPlayer(sender)) {
                 sendMessage(sender, "&cTa komenda musi być użyta przez gracza lub z argumentem [gracz].");
                 return true;
@@ -56,33 +54,29 @@ public class SpeedCommand extends BaseCommand {
             target = getPlayer(sender);
 
         } else if (args.length == 3) {
-            // Jest argument [gracz] - dotyczy innego gracza
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do zmieniania prędkości innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             target = Bukkit.getPlayer(args[2]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[2] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[2]);
                 return true;
             }
         } else {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
-        // 2. Aplikacja prędkości
-        // Prędkość 1-10 mapowana jest na 0.1-1.0
         float speedValue = (float) speedLevel / 10.0f;
 
         if (type.equals("walk")) {
             target.setWalkSpeed(speedValue);
-        } else { // type.equals("fly")
+        } else {
             target.setFlySpeed(speedValue);
         }
 
-        // 3. Wysyłanie wiadomości zwrotnych
         String typeName = type.equals("walk") ? "chodzenia" : "latania";
 
         if (target.equals(sender)) {

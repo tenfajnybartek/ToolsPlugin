@@ -1,51 +1,7 @@
-# =========================================
-# ToolsPlugin Language File
-# Edytuj dowolne wiadomości. Używaj & do kolorów.
-# Placeholdery w {nawiasach}. Np. {player}, {seconds}, {reason}
-# =========================================
-lang-version: 1
 
 core:
   prefix: "&8[&6ToolsPlugin&8] &r"
-  no-permission: "&cNie masz uprawnień do tej akcji!"
+  correct-usage: "&cPoprawne użycie: &7{USAGE}"
+  no-permission: "&cNie masz uprawnień do tej komendy &7(&7{PERMISSION}&7)!"
   only-player: "&cTa komenda może być użyta tylko przez gracza!"
-  usage: "&eUżycie: {usage}"
-  reload-success: "&aConfig i język przeładowane!"
-  reload-fail: "&cBłąd podczas przeładowania!"
-
-teleport:
-  start: "&aTeleport za &e{seconds}s &7(Nie ruszaj się)"
-  last-seconds: "&c{seconds}s &7do teleportu"
-  success: "&aTeleport zakończony."
-  cancelled: "&cTeleportacja anulowana! &7({reason})"
-  tpa-request-target: "&eTPA od &6{sender} &7(/tpaccept /tpadeny)"
-  tpa-sent: "&aWysłano prośbę TPA do &e{target}"
-  tpa-expired: "&cTwoja prośba do &e{target} &cwygasła."
-  back-missing: "&cNie masz zapisanej ostatniej lokalizacji!"
-
-vanish:
-  enabled: "&aJesteś teraz &ew ukryciu&a."
-  disabled: "&cNie jesteś już ukryty."
-  already: "&7Stan bez zmian (&e{state}&7)."
-  actionbar: "&a&lJESTEŚ NIEWIDZIALNY!"
-
-cooldown:
-  active: "&cMusisz poczekać jeszcze &e{seconds}s &cprzed ponownym użyciem tej komendy!"
-
-heal:
-  self: "&aZostałeś uleczony!"
-  other: "&aUleczono gracza &e{target}"
-  healed-by-admin: "&aZostałeś uleczony przez administratora!"
-  no-target: "&cGracz &e{target} &cnie jest online!"
-
-feed:
-  self: "&aZostałeś nakarmiony!"
-  other: "&aNakarmiono gracza &e{target}"
-  fed-by-admin: "&aZostałeś nakarmiony przez administratora!"
-  no-target: "&cGracz &e{target} &cnie jest online!"
-
-errors:
-  unknown-command: "&cNieznana komenda."
-  not-set: "&cNie ustawiono: {thing}"
-  world-not-loaded: "&cŚwiat nie jest załadowany!"
-  spawn-not-set: "&cGłówny spawn nie został ustawiony!"
+  player-offline: "&cGracz &7{PLAYER}&c jest offline!"

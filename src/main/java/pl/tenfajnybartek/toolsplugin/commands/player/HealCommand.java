@@ -16,46 +16,36 @@ import java.util.stream.Collectors;
 public class HealCommand extends BaseCommand {
 
     public HealCommand() {
-        super("heal", "Leczy gracza do pełnego HP i głodu", "/heal [gracz]", "tfbhc.cmd.heal", new String[]{"h"});
+        super("heal", "Leczy gracza do pełnego HP i głodu", "/heal [gracz]", "tools.cmd.heal", new String[]{"h"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
-        // /heal - leczy siebie
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
-                sendMessage(sender, "&eUżycie: " + getUsage());
+                sendOnlyPlayer(sender);
+                sendUsage(sender);
                 return true;
             }
 
             Player player = getPlayer(sender);
 
-            // Sprawdź cooldown
-            if (cooldownManager.checkCooldown(player, "heal")) {
-                return true; // Cooldown aktywny - blokuj wykonanie
-            }
-
             healPlayer(player);
             sendMessage(sender, "&aZostałeś uleczony!");
-
-            // Ustaw cooldown
-            cooldownManager.setCooldown(player, "heal");
             return true;
         }
 
-        // /heal <gracz> - leczy innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do leczenia innych graczy!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -66,15 +56,10 @@ public class HealCommand extends BaseCommand {
                 sendMessage(target, "&aZostałeś uleczony przez administratora!");
             }
 
-            // Cooldown tylko dla gracza używającego komendy
-            if (isPlayer(sender)) {
-                cooldownManager.setCooldown(getPlayer(sender), "heal");
-            }
-
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

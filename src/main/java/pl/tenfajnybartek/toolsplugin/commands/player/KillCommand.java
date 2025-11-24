@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 public class KillCommand extends BaseCommand {
 
     public KillCommand() {
-        super("kill", "Zabija gracza", "/kill [gracz]", "tfbhc.cmd.kill", new String[]{"zabić"});
+        super("kill", "Zabija gracza", "/kill [gracz]", "tools.cmd.kill", new String[]{"zabić"});
     }
 
     @Override
@@ -19,44 +19,37 @@ public class KillCommand extends BaseCommand {
 
         Player target;
 
-        // /kill - dla siebie
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda musi być użyta przez gracza lub z argumentem [gracz].");
+                sendOnlyPlayer(sender);
                 return true;
             }
             target = getPlayer(sender);
         }
-        // /kill <gracz> - dla innego gracza
         else if (args.length == 1) {
-            // Sprawdzenie uprawnienia dla innych
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do zabijania innych graczy!");
+                sendNoPermission(sender);
                 return true;
             }
 
             target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
         }
-        // Błąd użycia
         else {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
-        // Sprawdzenie, czy gracz jest już martwy (zapobieganie błędom)
         if (target.isDead()) {
             sendMessage(sender, "&cGracz &e" + target.getName() + " &cjest już martwy.");
             return true;
         }
 
-        // Zabicie gracza
         target.setHealth(0.0);
 
-        // Wysyłanie wiadomości zwrotnych
         if (target.equals(sender)) {
             sendMessage(sender, "&aZostałeś pomyślnie zabity!");
         } else {

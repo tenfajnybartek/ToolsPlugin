@@ -13,13 +13,13 @@ import java.util.List;
 public class MsgToggleCommand extends BaseCommand {
 
     public MsgToggleCommand() {
-        super("msgtoggle", "Włącza/wyłącza odbieranie prywatnych wiadomości", "/msgtoggle", "tools.msgtoggle", null);
+        super("msgtoggle", "Włącza/wyłącza odbieranie prywatnych wiadomości", "/msgtoggle", "tools.cmd.msgtoggle", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
@@ -35,7 +35,6 @@ public class MsgToggleCommand extends BaseCommand {
         boolean newState = !user.isMsgToggle();
         user.setMsgToggle(newState);
 
-        // NOWE
         userManager.saveUserAsync(user);
 
         String status = newState ? "&aWŁĄCZONE" : "&cWYŁĄCZONE";

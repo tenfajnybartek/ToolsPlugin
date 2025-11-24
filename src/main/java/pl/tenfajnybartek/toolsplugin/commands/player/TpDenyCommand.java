@@ -11,13 +11,13 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class TpDenyCommand extends BaseCommand {
 
     public TpDenyCommand() {
-        super("tpadeny", "Odrzuca prośbę o teleportację", "/tpadeny", "tools.tpadeny", null);
+        super("tpadeny", "Odrzuca prośbę o teleportację", "/tpadeny", "tools.cmd.tpadeny", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 

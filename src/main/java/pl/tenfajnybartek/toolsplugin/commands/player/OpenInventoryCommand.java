@@ -11,18 +11,18 @@ import java.util.stream.Collectors;
 public class OpenInventoryCommand extends BaseCommand {
 
     public OpenInventoryCommand() {
-        super("openinventory", "Otwiera ekwipunek gracza", "/openinventory <gracz>", "tfbhc.cmd.openinv", new String[]{"openinv", "invsee", "oi"});
+        super("openinventory", "Otwiera ekwipunek gracza", "/openinventory <gracz>", "tools.cmd.openinv", new String[]{"openinv", "invsee", "oi"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -30,7 +30,7 @@ public class OpenInventoryCommand extends BaseCommand {
         Player target = Bukkit.getPlayer(args[0]);
 
         if (target == null) {
-            sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+            sendPlayerOffline(sender, args[0]);
             return true;
         }
 

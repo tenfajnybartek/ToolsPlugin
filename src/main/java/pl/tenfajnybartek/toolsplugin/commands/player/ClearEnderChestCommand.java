@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class ClearEnderChestCommand extends BaseCommand {
 
     public ClearEnderChestCommand() {
-        super("clearenderchest", "Czyści ender chest gracza", "/clearenderchest <gracz>", "tfbhc.cmd.clearec", new String[]{"clearec", "cechest"});
+        super("clearenderchest", "Czyści ender chest gracza", "/clearenderchest <gracz>", "tools.cmd.clearenderchest", new String[]{"clearec", "cechest"});
     }
 
     @Override
@@ -20,17 +20,16 @@ public class ClearEnderChestCommand extends BaseCommand {
         if (args.length == 1) {
 
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do czyszczenia ender chestów innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
-            // Wywołanie zmienionej metody czyszczącej
             clearEnderChest(target);
 
             sendMessage(sender, "&aWyczyszczono ender chest gracza &e" + target.getName() + "&a!");
@@ -41,8 +40,7 @@ public class ClearEnderChestCommand extends BaseCommand {
             return true;
         }
 
-        // Komenda wymaga argumentu
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

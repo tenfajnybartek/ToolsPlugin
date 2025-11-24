@@ -3,6 +3,7 @@ package pl.tenfajnybartek.toolsplugin.utils;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import pl.tenfajnybartek.toolsplugin.base.ToolsPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,5 +75,23 @@ public abstract class BaseCommand {
     // Wysyłanie komponentu bezpośrednio
     protected void sendComponent(CommandSender sender, Component component) {
         sender.sendMessage(component);
+    }
+    protected void sendUsage(CommandSender sender) {
+        var lm = ToolsPlugin.getInstance().getLanguageManager();
+        sender.sendMessage(lm.formatUsage(getUsage()));
+    }
+    protected void sendNoPermission(CommandSender sender) {
+        var lm = pl.tenfajnybartek.toolsplugin.base.ToolsPlugin.getInstance().getLanguageManager();
+        sender.sendMessage(lm.getNoPermission(getPermission() != null ? getPermission() : "brak"));
+    }
+
+    protected void sendOnlyPlayer(CommandSender sender) {
+        var lm = pl.tenfajnybartek.toolsplugin.base.ToolsPlugin.getInstance().getLanguageManager();
+        sender.sendMessage(lm.getOnlyPlayer());
+    }
+
+    protected void sendPlayerOffline(CommandSender sender, String playerName) {
+        var lm = pl.tenfajnybartek.toolsplugin.base.ToolsPlugin.getInstance().getLanguageManager();
+        sender.sendMessage(lm.getPlayerOffline(playerName));
     }
 }

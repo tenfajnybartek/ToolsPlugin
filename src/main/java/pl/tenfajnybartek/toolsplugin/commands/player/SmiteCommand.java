@@ -12,41 +12,34 @@ import java.util.stream.Collectors;
 public class SmiteCommand extends BaseCommand {
 
     public SmiteCommand() {
-        super("smite", "Uderza piorunem we wskazanego gracza", "/smite <gracz>", "tfbhc.cmd.smite", new String[]{"piorun"});
+        super("smite", "Uderza piorunem we wskazanego gracza", "/smite <gracz>", "tools.cmd.smite", new String[]{"piorun"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
-        // Komenda wymaga dokładnie 1 argumentu
         if (args.length != 1) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
-        // 1. Walidacja gracza docelowego
         Player target = Bukkit.getPlayer(args[0]);
         if (target == null) {
-            sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+            sendPlayerOffline(sender, args[0]);
             return true;
         }
 
-        // 2. Blokada dla admina z bypass
         if (target.hasPermission(perm("bypass"))) {
             sendMessage(sender, "&cNie możesz uderzyć piorunem gracza &e" + target.getName() + " &c(posiada uprawnienie bypass).");
             return true;
         }
 
-        // 3. Uderzenie piorunem
         Location targetLocation = target.getLocation();
 
-        // Uderzenie piorunem: strikeLightning() zadaje obrażenia, strikeLightningEffect() tylko efekt.
         target.getWorld().strikeLightning(targetLocation);
 
-        // 4. Wysyłanie wiadomości zwrotnych
         sendMessage(sender, String.format("&aGracz &e%s &azostał ukarany piorunem!", target.getName()));
 
-        // Opcjonalna wiadomość dla gracza
         if (!target.equals(sender)) {
             sendMessage(target, "&4Zostałeś uderzony piorunem przez &c" + sender.getName() + "!");
         }

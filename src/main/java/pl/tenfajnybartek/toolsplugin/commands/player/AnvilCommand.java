@@ -10,19 +10,19 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class AnvilCommand extends BaseCommand {
 
     public AnvilCommand() {
-        super("anvil", "Otwiera wirtualne kowadło", "/anvil", "tfbhc.cmd.anvil", new String[]{"kowadlo"});
+        super("anvil", "Otwiera wirtualne kowadło", "/anvil", "tools.cmd.anvil", new String[]{"kowadlo"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
 
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 

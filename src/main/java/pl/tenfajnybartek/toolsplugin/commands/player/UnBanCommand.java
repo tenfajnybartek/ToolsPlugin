@@ -16,13 +16,13 @@ import static pl.tenfajnybartek.toolsplugin.utils.ColorUtils.toComponent;
 public class UnBanCommand extends BaseCommand {
 
     public UnBanCommand() {
-        super("unban", "Odbanowuje gracza", "/unban <nick>", "tools.unban", null);
+        super("unban", "Odbanowuje gracza", "/unban <nick>", "tools.cmd.unban", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length != 1) {
-            sendMessage(sender, getUsage());
+            sendUsage(sender);
             return true;
         }
 

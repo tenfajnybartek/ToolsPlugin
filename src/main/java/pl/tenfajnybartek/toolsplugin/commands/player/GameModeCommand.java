@@ -14,13 +14,13 @@ import java.util.stream.Collectors;
 public class GameModeCommand extends BaseCommand {
 
     public GameModeCommand() {
-        super("gamemode", "Zmiana trybu gry graczy", "/gamemode <tryb> [gracz]", "tfbhc.cmd.gamemode", new String[]{"gm", "gmode"});
+        super("gamemode", "Zmiana trybu gry graczy", "/gamemode <tryb> [gracz]", "tools.cmd.gamemode", new String[]{"gm", "gmode"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -34,13 +34,13 @@ public class GameModeCommand extends BaseCommand {
 
         if (args.length >= 2) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do zmiany trybu gry innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             target = Bukkit.getPlayer(args[1]);
             if (target == null) {
-                sendMessage(sender, "&cGracz nie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
         } else {

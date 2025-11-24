@@ -15,30 +15,27 @@ import java.util.stream.Collectors;
 public class MsgCommand extends BaseCommand {
 
     public MsgCommand() {
-        // Użycie: /msg <gracz> <wiadomość>
-        super("msg", "Wysyła prywatną wiadomość", "/msg <gracz> <wiadomość>", "tools.msg", null);
+        super("msg", "Wysyła prywatną wiadomość", "/msg <gracz> <wiadomość>", "tools.cmd.msg", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTylko gracze mogą używać tej komendy.");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length < 2) {
-            // Wyświetlenie prawidłowego użycia komendy
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
         Player player = getPlayer(sender);
 
-        // 1. Pobranie gracza-odbiorcy
         Player target = Bukkit.getPlayer(args[0]);
 
         if (target == null || !target.isOnline()) {
-            sendMessage(player, "&cGracz " + args[0] + " jest offline lub nie istnieje.");
+            sendPlayerOffline(sender, args[0]);
             return true;
         }
 
@@ -47,14 +44,12 @@ public class MsgCommand extends BaseCommand {
             return true;
         }
 
-        // 2. Budowanie wiadomości
         StringBuilder messageBuilder = new StringBuilder();
         for (int i = 1; i < args.length; i++) {
             messageBuilder.append(args[i]).append(" ");
         }
         String message = messageBuilder.toString().trim();
 
-        // 3. Wysyłanie przez MessageManager
         MessageManager messageManager = ToolsPlugin.getInstance().getMessageManager();
         messageManager.sendPrivateMessage(player, target, message);
 
@@ -63,7 +58,6 @@ public class MsgCommand extends BaseCommand {
     @Override
     public List<String> tabComplete(CommandSender sender, String[] args) {
         if (args.length == 1) {
-            // Podpowiadanie graczy
             return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
                     .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))

@@ -11,35 +11,33 @@ import java.util.stream.Collectors;
 public class EnderChestCommand extends BaseCommand {
 
     public EnderChestCommand() {
-        super("enderchest", "Otwiera ender chest gracza", "/enderchest [gracz]", "tfbhc.cmd.enderchest", new String[]{"ec", "echest"});
+        super("enderchest", "Otwiera ender chest gracza", "/enderchest [gracz]", "tools.cmd.enderchest", new String[]{"ec", "echest"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         Player player = getPlayer(sender);
 
-        // /ec - otwiera swój ender chest
         if (args.length == 0) {
             player.openInventory(player.getEnderChest());
             sendMessage(sender, "&aOtwarto twój ender chest!");
             return true;
         }
 
-        // /ec <gracz> - otwiera ender chest innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do przeglądania ender chestów innych graczy!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -48,7 +46,7 @@ public class EnderChestCommand extends BaseCommand {
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

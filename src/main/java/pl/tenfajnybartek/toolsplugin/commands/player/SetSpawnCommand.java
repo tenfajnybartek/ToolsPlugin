@@ -10,18 +10,18 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class SetSpawnCommand extends BaseCommand {
 
     public SetSpawnCommand() {
-        super("setspawn", "Ustawia główny punkt spawnu", "/setspawn", "tfbhc.cmd.setspawn", null);
+        super("setspawn", "Ustawia główny punkt spawnu", "/setspawn", "tools.cmd.setspawn", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -30,7 +30,6 @@ public class SetSpawnCommand extends BaseCommand {
 
         Location location = player.getLocation();
 
-        // Zapis lokalizacji Spawna
         configManager.setSpawnLocation(location);
 
         sendMessage(sender, "&aUstawiono główny Spawn na Twojej aktualnej lokalizacji: &e" + location.getWorld().getName());

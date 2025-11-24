@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 public class FlyCommand extends BaseCommand {
 
     public FlyCommand() {
-        super("fly", "Włącza/wyłącza latanie", "/fly [gracz]", "tfbhc.cmd.fly", new String[]{"flight"});
+        super("fly", "Włącza/wyłącza latanie", "/fly [gracz]", "tools.cmd.fly", new String[]{"flight"});
     }
 
     @Override
@@ -19,8 +19,8 @@ public class FlyCommand extends BaseCommand {
         // /fly - przełącza latanie dla siebie
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
-                sendMessage(sender, "&eUżycie: " + getUsage());
+                sendOnlyPlayer(sender);
+                sendUsage(sender);
                 return true;
             }
 
@@ -38,13 +38,13 @@ public class FlyCommand extends BaseCommand {
         // /fly <gracz> - przełącza latanie dla innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do zmiany latania innym graczom!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -64,7 +64,7 @@ public class FlyCommand extends BaseCommand {
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 
@@ -72,7 +72,6 @@ public class FlyCommand extends BaseCommand {
         boolean newState = !player.getAllowFlight();
         player.setAllowFlight(newState);
 
-        // Jeśli wyłączamy latanie i gracz leci, delikatnie go opuść
         if (!newState && player.isFlying()) {
             player.setFlying(false);
         }

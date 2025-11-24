@@ -15,13 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HelpopManager {
 
     // Hardcoded permisje
-    public static final String PERM_SEND    = "tfbhc.cmd.helpop";
-    public static final String PERM_RECEIVE = "tfbhc.cmd.helpop.receive";
-    public static final String PERM_BYPASS  = "tfbhc.cmd.helpop.bypass";
-    public static final String PERM_TOGGLE  = "tfbhc.cmd.helpop.toggle";
+    public static final String PERM_SEND    = "tools.cmd.helpop";
+    public static final String PERM_RECEIVE = "tools.cmd.helpop.receive";
+    public static final String PERM_BYPASS  = "tools.cmd.helpop.bypass";
+    public static final String PERM_TOGGLE  = "tools.cmd.helpop.toggle";
 
     // Hardcoded format (placeholdery: %player%, %message%)
-    private static final String MESSAGE_FORMAT = "&c[HelpOp] &f%player% &7: &e%message%";
+    private static final String MESSAGE_FORMAT = "&c[HelpOp] &f%player% &7: &7%message%";
 
     private final JavaPlugin plugin;
     private final ConfigManager configManager;

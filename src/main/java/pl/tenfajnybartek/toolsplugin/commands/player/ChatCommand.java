@@ -16,7 +16,7 @@ public class ChatCommand extends BaseCommand {
     private final ChatManager chatManager;
 
     public ChatCommand(ChatManager chatManager) {
-        super("chat", "Zarządza globalnym stanem chatu", "/chat <on/off/clear/vip>", "tfbhc.cmd.chat", new String[]{"czat"});
+        super("chat", "Zarządza globalnym stanem chatu", "/chat <on/off/clear/vip>", "tools.cmd.chat", new String[]{"czat"});
         this.chatManager = chatManager;
     }
 
@@ -24,7 +24,7 @@ public class ChatCommand extends BaseCommand {
     public boolean execute(CommandSender sender, String[] args) {
 
         if (args.length != 1) {
-            chatManager.sendMessage(sender, "&cUżycie: " + getUsage()); // Użycie ChatManager
+            sendUsage(sender);
             return true;
         }
 
@@ -34,7 +34,6 @@ public class ChatCommand extends BaseCommand {
 
         switch (subCommand) {
             case "on":
-                // Stan "VIP only" oznacza, że chat jest włączony, ale z restrykcjami
                 if (chatManager.isChatEnabled() && !chatManager.isChatVipOnly()) {
                     chatManager.sendMessage(sender, "&aGlobalny chat jest już &ewłączony&a dla wszystkich.");
                     return true;
@@ -44,7 +43,7 @@ public class ChatCommand extends BaseCommand {
                 chatManager.setChatVipOnly(false);
 
                 broadcastMessage = "&6Chat serwera został &awłączony &6przez " + senderName + ".";
-                chatManager.sendMessage(sender, "&aGlobalny chat został &ewłączony&a."); // Użycie ChatManager
+                chatManager.sendMessage(sender, "&aGlobalny chat został &ewłączony&a.");
                 break;
 
             case "off":
@@ -57,34 +56,30 @@ public class ChatCommand extends BaseCommand {
                 chatManager.setChatVipOnly(false);
 
                 broadcastMessage = "&6Chat serwera został &cwyłączony &6przez " + senderName + ".";
-                chatManager.sendMessage(sender, "&cGlobalny chat został &cwyłączony&c."); // Użycie ChatManager
+                chatManager.sendMessage(sender, "&cGlobalny chat został &cwyłączony&c.");
                 break;
 
             case "clear":
-                // Wysłanie 100 pustych linii (działa to synchronicznie)
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     for (int i = 0; i < 100; i++) {
                         player.sendMessage(" ");
                     }
                 }
 
-                chatManager.sendMessage(sender, "&aWyczyszczono chat dla wszystkich graczy."); // Użycie ChatManager
+                chatManager.sendMessage(sender, "&aWyczyszczono chat dla wszystkich graczy.");
 
-                // Wiadomość broadcast powinna być wysłana raz
                 broadcastMessage = "&6&lCHAT ZRESETOWANY: &aChat został wyczyszczony przez " + senderName + ".";
                 break;
 
             case "vip":
                 if (chatManager.isChatVipOnly()) {
                     chatManager.setChatVipOnly(false);
-                    // Resetowanie do stanu "chat włączony dla wszystkich"
                     chatManager.setChatEnabled(true);
 
                     broadcastMessage = "&6Tryb &eVIP CHAT&6 został &cwyłączony&6 przez " + senderName + ".";
-                    chatManager.sendMessage(sender, "&aTryb &eVIP CHAT&a został &cwyłączony&a. Chat jest &ewłączony&a dla wszystkich."); // Użycie ChatManager
+                    chatManager.sendMessage(sender, "&aTryb &eVIP CHAT&a został &cwyłączony&a. Chat jest &ewłączony&a dla wszystkich.");
                 } else {
                     chatManager.setChatVipOnly(true);
-                    // Włączenie globalnego chatu, jeśli VIP jest włączany
                     chatManager.setChatEnabled(true);
 
                     broadcastMessage = "&6Tryb &eVIP CHAT&6 został &awłączony &6przez " + senderName + ".";
@@ -93,12 +88,10 @@ public class ChatCommand extends BaseCommand {
                 break;
 
             default:
-                chatManager.sendMessage(sender, "&cNieprawidłowa opcja. Dostępne: on, off, clear, vip."); // Użycie ChatManager
+                chatManager.sendMessage(sender, "&cNieprawidłowa opcja. Dostępne: on, off, clear, vip.");
                 return true;
         }
 
-        // 🚨 Krok 1: Wysłanie globalnej wiadomości z koloryzacją
-        // Wysłanie komunikatu do wszystkich (clear i on/off/vip)
         Bukkit.broadcastMessage(ColorUtils.colorize(broadcastMessage));
 
         return true;

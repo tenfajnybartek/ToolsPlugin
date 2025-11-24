@@ -13,46 +13,38 @@ import java.util.stream.Collectors;
 public class FeedCommand extends BaseCommand {
 
     public FeedCommand() {
-        super("feed", "Karmi gracza do pełna", "/feed [gracz]", "tfbhc.cmd.feed", new String[]{"eat"});
+        super("feed", "Karmi gracza do pełna", "/feed [gracz]", "tools.cmd.feed", new String[]{"eat"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
-        // /feed - karmi siebie
         if (args.length == 0) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
-                sendMessage(sender, "&eUżycie: " + getUsage());
+                sendOnlyPlayer(sender);
+                sendUsage(sender);
                 return true;
             }
 
             Player player = getPlayer(sender);
 
-            // Sprawdź cooldown
-            if (cooldownManager.checkCooldown(player, "feed")) {
-                return true; // Cooldown aktywny - blokuj wykonanie
-            }
 
             feedPlayer(player);
             sendMessage(sender, "&aZostałeś nakarmiony!");
 
-            // Ustaw cooldown
-            cooldownManager.setCooldown(player, "feed");
             return true;
         }
 
-        // /feed <gracz> - karmi innego gracza
         if (args.length == 1) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do karmienia innych graczy!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -63,15 +55,10 @@ public class FeedCommand extends BaseCommand {
                 sendMessage(target, "&aZostałeś nakarmiony przez administratora!");
             }
 
-            // Cooldown tylko dla gracza używającego komendy
-            if (isPlayer(sender)) {
-                cooldownManager.setCooldown(getPlayer(sender), "feed");
-            }
-
             return true;
         }
 
-        sendMessage(sender, "&cUżycie: " + getUsage());
+        sendUsage(sender);
         return true;
     }
 

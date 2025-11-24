@@ -15,7 +15,7 @@ public class ChatManager {
 
     private boolean chatEnabled = true;
     private boolean chatVipOnly = false;
-    private final String vipPermission = "tfbhc.chat.vip";
+    private final String vipPermission = "tools.chat.vip";
 
     // 🚨 KOREKTA: Konstruktor musi przyjmować zależności
     public ChatManager(JavaPlugin plugin, ConfigManager configManager, PermissionManager permissionManager) {

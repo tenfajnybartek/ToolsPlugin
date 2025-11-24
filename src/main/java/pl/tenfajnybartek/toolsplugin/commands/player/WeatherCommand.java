@@ -14,13 +14,13 @@ public class WeatherCommand extends BaseCommand {
     private static final List<String> WEATHER_TYPES = Arrays.asList("clear", "rain", "thunder");
 
     public WeatherCommand() {
-        super("weather", "Zmienia pogodę w świecie", "/weather <clear/rain/thunder>", "tfbhc.cmd.weather", new String[]{"pogoda"});
+        super("weather", "Zmienia pogodę w świecie", "/weather <clear/rain/thunder>", "tools.cmd.weather", new String[]{"pogoda"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length != 1) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -31,7 +31,6 @@ public class WeatherCommand extends BaseCommand {
             return true;
         }
 
-        // Bierzemy świat, w którym znajduje się gracz, lub główny świat
         World world;
         if (isPlayer(sender)) {
             world = getPlayer(sender).getWorld();
@@ -39,7 +38,6 @@ public class WeatherCommand extends BaseCommand {
             world = Bukkit.getWorlds().get(0);
         }
 
-        // Zmienna do wiadomości zwrotnej
         String status = "";
 
         switch (type) {
@@ -59,7 +57,6 @@ public class WeatherCommand extends BaseCommand {
                 status = "&awłączono burzę";
                 break;
             default:
-                // Nie powinno się zdarzyć, ale dla bezpieczeństwa
                 sendMessage(sender, "&cNieprawidłowy typ pogody.");
                 return true;
         }

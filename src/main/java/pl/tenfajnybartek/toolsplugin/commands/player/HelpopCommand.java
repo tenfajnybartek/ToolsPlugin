@@ -33,13 +33,12 @@ public class HelpopCommand extends BaseCommand {
         }
 
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie: /helpop <wiadomość>");
+            sendUsage(sender);
             return true;
         }
 
         String sub = args[0].toLowerCase();
 
-        // Admin: on/off/reload
         if (sub.equals("on") || sub.equals("off") || sub.equals("reload")) {
             if (!(sender instanceof Player) || ((Player) sender).hasPermission(HelpopManager.PERM_TOGGLE)) {
                 if (sub.equals("reload")) {
@@ -55,12 +54,11 @@ public class HelpopCommand extends BaseCommand {
                 }
                 return true;
             } else {
-                sendMessage(sender, "&cBrak uprawnień (tfbhc.cmd.helpop.toggle).");
+                sendNoPermission(sender);
                 return true;
             }
         }
 
-        // Wiadomość od gracza
         if (!(sender instanceof Player)) {
             sendMessage(sender, "&cKonsola nie może wysyłać HelpOp.");
             return true;
@@ -73,7 +71,7 @@ public class HelpopCommand extends BaseCommand {
             return true;
         }
         if (!player.hasPermission(HelpopManager.PERM_SEND)) {
-            sendMessage(player, "&cBrak uprawnień (tfbhc.cmd.helpop).");
+            sendNoPermission(sender);
             return true;
         }
 

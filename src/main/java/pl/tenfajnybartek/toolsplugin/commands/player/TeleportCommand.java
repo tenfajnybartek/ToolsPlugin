@@ -14,23 +14,19 @@ import java.util.stream.Collectors;
 public class TeleportCommand extends BaseCommand {
 
     public TeleportCommand() {
-        super("teleport", "Teleportacja graczy", "/tp <gracz> | /tp <g1> <g2> | /tp <gracz> <x> <y> <z> [world]", "tfbhc.cmd.tp", new String[]{"tp"});
+        super("teleport", "Teleportacja graczy", "/tp <gracz> | /tp <g1> <g2> | /tp <gracz> <x> <y> <z> [world]", "tools.cmd.tp", new String[]{"tp"});
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (args.length == 0) {
-            sendMessage(sender, "&cUżycie:");
-            sendMessage(sender, "&e/tp <gracz> &7- teleportuje cię do gracza");
-            sendMessage(sender, "&e/tp <g1> <g2> &7- teleportuje gracza1 do gracza2");
-            sendMessage(sender, "&e/tp <gracz> <x> <y> <z> [world] &7- teleportuje na koordynaty");
+            sendUsage(sender);
             return true;
         }
 
-        // /tp <gracz> - teleportuje cię do gracza
         if (args.length == 1) {
             if (!isPlayer(sender)) {
-                sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+                sendOnlyPlayer(sender);
                 return true;
             }
 
@@ -38,7 +34,7 @@ public class TeleportCommand extends BaseCommand {
             Player target = Bukkit.getPlayer(args[0]);
 
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -50,7 +46,7 @@ public class TeleportCommand extends BaseCommand {
         // /tp <g1> <g2> - teleportuje g1 do g2
         if (args.length == 2) {
             if (!sender.hasPermission(perm("others"))) {
-                sendMessage(sender, "&cNie masz uprawnień do teleportowania innych graczy!");
+                sendNoPermission(sender);
                 return true;
             }
 
@@ -58,12 +54,12 @@ public class TeleportCommand extends BaseCommand {
             Player player2 = Bukkit.getPlayer(args[1]);
 
             if (player1 == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
             if (player2 == null) {
-                sendMessage(sender, "&cGracz &e" + args[1] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[1]);
                 return true;
             }
 
@@ -73,16 +69,15 @@ public class TeleportCommand extends BaseCommand {
             return true;
         }
 
-        // /tp <gracz> <x> <y> <z> [world] - teleportuje gracza na koordynaty
         if (args.length >= 4) {
             if (!sender.hasPermission(perm("coords"))) {
-                sendMessage(sender, "&cNie masz uprawnień do teleportowania na koordynaty!");
+                sendNoPermission(sender);
                 return true;
             }
 
             Player target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sendMessage(sender, "&cGracz &e" + args[0] + " &cnie jest online!");
+                sendPlayerOffline(sender, args[0]);
                 return true;
             }
 
@@ -93,7 +88,6 @@ public class TeleportCommand extends BaseCommand {
 
                 World world = target.getWorld();
 
-                // Opcjonalnie: obsługa świata jako 5. argument
                 if (args.length >= 5) {
                     World specifiedWorld = Bukkit.getWorld(args[4]);
                     if (specifiedWorld != null) {
@@ -123,17 +117,10 @@ public class TeleportCommand extends BaseCommand {
             return true;
         }
 
-        // Błędna liczba argumentów (3 argumenty)
-        sendMessage(sender, "&cUżycie:");
-        sendMessage(sender, "&e/tp <gracz> &7- teleportuje cię do gracza");
-        sendMessage(sender, "&e/tp <g1> <g2> &7- teleportuje gracza1 do gracza2");
-        sendMessage(sender, "&e/tp <gracz> <x> <y> <z> [world] &7- teleportuje na koordynaty");
+        sendUsage(sender);
         return true;
     }
 
-    /**
-     * Parsuje koordynat - obsługuje relatywne wartości (~)
-     */
     private double parseCoordinate(String input, double current) throws NumberFormatException {
         if (input.equals("~")) {
             return current;
@@ -151,7 +138,6 @@ public class TeleportCommand extends BaseCommand {
     public List<String> tabComplete(CommandSender sender, String[] args) {
         List<String> completions = new ArrayList<>();
 
-        // Tab complete dla nazw graczy
         if (args.length == 1) {
             return Bukkit.getOnlinePlayers().stream()
                     .map(Player::getName)
@@ -159,7 +145,6 @@ public class TeleportCommand extends BaseCommand {
                     .collect(Collectors.toList());
         }
 
-        // /tp <g1> <g2> - drugi gracz
         if (args.length == 2) {
             Player firstPlayer = Bukkit.getPlayer(args[0]);
             if (firstPlayer != null) {
@@ -170,7 +155,6 @@ public class TeleportCommand extends BaseCommand {
             }
         }
 
-        // /tp <gracz> <x> <y> <z> - koordynaty
         if (args.length >= 2 && args.length <= 4) {
             if (isPlayer(sender)) {
                 Player player = getPlayer(sender);
@@ -189,7 +173,6 @@ public class TeleportCommand extends BaseCommand {
             }
         }
 
-        // /tp <gracz> <x> <y> <z> <world> - świat
         if (args.length == 5) {
             return Bukkit.getWorlds().stream()
                     .map(World::getName)

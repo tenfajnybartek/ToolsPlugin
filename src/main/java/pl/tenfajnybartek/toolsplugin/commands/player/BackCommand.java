@@ -11,19 +11,18 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class BackCommand extends BaseCommand {
 
     public BackCommand() {
-        super("back", "Teleportuje do ostatniej lokalizacji", "/back", "tfbhc.cmd.back", null);
+        super("back", "Teleportuje do ostatniej lokalizacji", "/back", "tools.cmd.back", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         Player player = getPlayer(sender);
         TeleportManager teleportManager = ToolsPlugin.getInstance().getTeleportManager();
-        CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
         Location lastLocation = teleportManager.getLastLocation(player);
 
@@ -32,16 +31,7 @@ public class BackCommand extends BaseCommand {
             return true;
         }
 
-        // Sprawdź cooldown
-        if (cooldownManager.checkCooldown(player, "back")) {
-            return true;
-        }
-
-        // Teleportuj z delay
         teleportManager.teleport(player, lastLocation, "&aPowrócono do ostatniej lokalizacji");
-
-        // Ustaw cooldown
-        cooldownManager.setCooldown(player, "back");
 
         return true;
     }

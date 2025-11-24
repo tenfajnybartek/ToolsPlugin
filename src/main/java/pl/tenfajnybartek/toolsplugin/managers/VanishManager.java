@@ -13,13 +13,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * VanishManager
- * Obsługa ukrywania gracza + stały (pinned) ActionBar
- */
 public class VanishManager {
 
-    public static final String PERM_BASE      = "tfbhc.cmd.vanish";
+    public static final String PERM_BASE      = "tools.cmd.vanish";
     public static final String PERM_ADMIN     = PERM_BASE + ".admin";
     public static final String PERM_SEE       = PERM_BASE + ".see";
     public static final String PERM_PICKUP    = PERM_BASE + ".pickup";

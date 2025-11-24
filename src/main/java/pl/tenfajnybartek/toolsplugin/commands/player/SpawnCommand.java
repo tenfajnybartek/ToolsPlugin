@@ -12,18 +12,18 @@ import pl.tenfajnybartek.toolsplugin.utils.BaseCommand;
 public class SpawnCommand extends BaseCommand {
 
     public SpawnCommand() {
-        super("spawn", "Teleportuje na główny spawn", "/spawn", "tfbhc.cmd.spawn", null);
+        super("spawn", "Teleportuje na główny spawn", "/spawn", "tools.cmd.spawn", null);
     }
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
         if (!isPlayer(sender)) {
-            sendMessage(sender, "&cTa komenda może być użyta tylko przez gracza!");
+            sendOnlyPlayer(sender);
             return true;
         }
 
         if (args.length != 0) {
-            sendMessage(sender, "&cUżycie: " + getUsage());
+            sendUsage(sender);
             return true;
         }
 
@@ -31,15 +31,8 @@ public class SpawnCommand extends BaseCommand {
         ToolsPlugin plugin = ToolsPlugin.getInstance();
 
         ConfigManager configManager = plugin.getConfigManager();
-        CooldownManager cooldownManager = plugin.getCooldownManager();
         TeleportManager teleportManager = plugin.getTeleportManager();
 
-        // 1. Sprawdź cooldown
-        if (cooldownManager.checkCooldown(player, "spawn")) {
-            return true;
-        }
-
-        // 2. Pobierz lokalizację
         Location spawnLocation = configManager.getSpawnLocation();
 
         if (spawnLocation == null) {
@@ -47,17 +40,13 @@ public class SpawnCommand extends BaseCommand {
             return true;
         }
 
-        // 3. Sprawdź czy świat jest załadowany (dodatkowe zabezpieczenie)
         if (spawnLocation.getWorld() == null) {
             sendMessage(player, "&cŚwiat spawnu nie jest załadowany! Zgłoś to administracji.");
             return true;
         }
 
-        // 4. Teleportuj z delay
         teleportManager.teleport(player, spawnLocation, "&aPrzeteleportowano na główny Spawn!");
 
-        // 5. Ustaw cooldown
-        cooldownManager.setCooldown(player, "spawn");
 
         return true;
     }
