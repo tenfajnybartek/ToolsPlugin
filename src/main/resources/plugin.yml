@@ -3,4 +3,4 @@ version: '1.0.0-SNAPSHOT'
 main: pl.tenfajnybartek.toolsplugin.base.ToolsPlugin
 api-version: '1.21'
 authors: [ tenfajnybartek ]
-description: projekcik
+description: Plugin na toolsy

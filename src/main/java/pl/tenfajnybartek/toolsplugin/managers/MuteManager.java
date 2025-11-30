@@ -58,7 +58,6 @@ public class MuteManager {
         LocalDateTime expire = TimeUtils.parseTime(timeString); // null = perm
         String finalReason = reason == null || reason.isEmpty() ? "Brak powodu" : reason;
 
-        // Dezaktywuj stare
         return db.updateAsync("UPDATE " + TABLE + " SET active=FALSE WHERE target_uuid=? AND active=" + (db.getType().equals("mysql") ? "TRUE" : "1"),
                 target.getUniqueId().toString()
         ).thenCompose(ignored -> {

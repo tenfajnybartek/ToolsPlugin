@@ -15,7 +15,6 @@ public class BanRecord {
     private final String reason;
     private boolean active;
 
-    // Konstruktor dla nowego bana
     public BanRecord(UUID targetUuid, String targetName, UUID bannerUuid, String bannerName,
                      LocalDateTime banTime, LocalDateTime expireTime, String reason) {
         this.id = -1;
@@ -29,7 +28,6 @@ public class BanRecord {
         this.active = true;
     }
 
-    // Konstruktor dla ładowania z bazy
     public BanRecord(int id, UUID targetUuid, String targetName, UUID bannerUuid, String bannerName,
                      LocalDateTime banTime, LocalDateTime expireTime, String reason, boolean active) {
         this.id = id;
@@ -67,7 +65,6 @@ public class BanRecord {
         return active;
     }
 
-    // Gettery
     public int getId() { return id; }
     public UUID getTargetUuid() { return targetUuid; }
     public String getTargetName() { return targetName; }

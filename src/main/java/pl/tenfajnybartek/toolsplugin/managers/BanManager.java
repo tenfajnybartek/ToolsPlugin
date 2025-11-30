@@ -20,14 +20,13 @@ public class BanManager {
     private final ToolsPlugin plugin;
     private final DatabaseManager databaseManager;
 
-    // s,m,h,d,w,y (sekundy, minuty, godziny, dni, tygodnie, lata)
     private static final Pattern TIME_PATTERN = Pattern.compile("(\\d+)([smhdwy])", Pattern.CASE_INSENSITIVE);
     private static final String TABLE = "bans";
 
     public BanManager(ToolsPlugin plugin, DatabaseManager databaseManager) {
         this.plugin = plugin;
         this.databaseManager = databaseManager;
-        initializeTable(); // opcjonalne jeśli tabele tworzy DatabaseManager
+        initializeTable();
     }
 
     private void initializeTable() {
@@ -57,14 +56,11 @@ public class BanManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Parsowanie czasu (np. 1d2h30m -> LocalDateTime)
-    // ---------------------------------------------------------------
     public LocalDateTime parseTime(String timeString) {
         if (timeString == null ||
                 timeString.equalsIgnoreCase("perm") ||
                 timeString.equalsIgnoreCase("permanent")) {
-            return null; // permanentny
+            return null;
         }
 
         long totalSeconds = 0;
@@ -90,9 +86,6 @@ public class BanManager {
         return LocalDateTime.now().plusSeconds(totalSeconds);
     }
 
-    // ---------------------------------------------------------------
-    // Banowanie gracza
-    // ---------------------------------------------------------------
     public CompletableFuture<BanRecord> banPlayer(OfflinePlayer target,
                                                   Player banner,
                                                   String timeString,
@@ -109,7 +102,6 @@ public class BanManager {
             String bannerName = safeName(banner.getName(), banner.getUniqueId());
 
             try (Connection conn = databaseManager.getConnection()) {
-                // Deaktywuj poprzednie aktywne bany
                 try (PreparedStatement deactivate = conn.prepareStatement(
                         "UPDATE " + TABLE + " SET active = FALSE WHERE target_uuid = ? AND active = TRUE")) {
                     deactivate.setString(1, target.getUniqueId().toString());
@@ -162,9 +154,6 @@ public class BanManager {
         }, ToolsPlugin.getExecutor());
     }
 
-    // ---------------------------------------------------------------
-    // Odbanowanie
-    // ---------------------------------------------------------------
     public CompletableFuture<Boolean> unbanPlayer(UUID targetUuid) {
         return CompletableFuture.supplyAsync(() -> {
             if (databaseManager.isDisabled()) return false;
@@ -180,9 +169,6 @@ public class BanManager {
         }, ToolsPlugin.getExecutor());
     }
 
-    // ---------------------------------------------------------------
-    // Pobranie aktywnego bana
-    // ---------------------------------------------------------------
     public CompletableFuture<Optional<BanRecord>> getActiveBan(UUID targetUuid) {
         return CompletableFuture.supplyAsync(() -> {
             if (databaseManager.isDisabled()) return Optional.empty();
@@ -210,9 +196,6 @@ public class BanManager {
         }, ToolsPlugin.getExecutor());
     }
 
-    // ---------------------------------------------------------------
-    // Wszystkie bany gracza
-    // ---------------------------------------------------------------
     public CompletableFuture<List<BanRecord>> getAllBans(UUID targetUuid) {
         return CompletableFuture.supplyAsync(() -> {
             List<BanRecord> list = new ArrayList<>();
@@ -234,9 +217,6 @@ public class BanManager {
         }, ToolsPlugin.getExecutor());
     }
 
-    // ---------------------------------------------------------------
-    // Dodatkowe pomocnicze
-    // ---------------------------------------------------------------
     public CompletableFuture<Boolean> isCurrentlyBanned(UUID targetUuid) {
         return getActiveBan(targetUuid).thenApply(Optional::isPresent);
     }
@@ -258,9 +238,6 @@ public class BanManager {
         }, ToolsPlugin.getExecutor());
     }
 
-    // ---------------------------------------------------------------
-    // Mapowanie wiersza
-    // ---------------------------------------------------------------
     private BanRecord map(ResultSet rs) throws SQLException {
         int id = rs.getInt("id");
         UUID targetUuid = UUID.fromString(rs.getString("target_uuid"));

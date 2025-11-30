@@ -57,9 +57,6 @@ public class UserManager {
         db.executeUpdate(sql);
     }
 
-    /**
-     * Ładuje (lub tworzy) użytkownika asynchronicznie.
-     */
     public void loadUser(Player player) {
         UUID uuid = player.getUniqueId();
         String name = player.getName();
@@ -79,13 +76,11 @@ public class UserManager {
                         boolean socialSpy = getBool(rs, "social_spy");
 
                         User user = new User(uuid, name, ip, firstJoin, lastJoin, lastQuit, lastMessageFrom, tpToggle, msgToggle, socialSpy);
-                        // Aktualizujemy dane w pamięci (ostatnie wejście + ip + nazwa)
                         user.updateLastJoin();
                         user.setIp(ip);
                         user.setName(name);
                         return user;
                     } else {
-                        // Nowy użytkownik
                         return new User(uuid, name, ip);
                     }
                 },
@@ -94,16 +89,12 @@ public class UserManager {
             if (user != null) {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     cache.put(uuid, user);
-                    // Zapis asynchroniczny (nie blokuje wątku głównego)
                     saveUserAsync(user);
                 });
             }
         });
     }
 
-    /**
-     * Zapis użytkownika asynchronicznie (INSERT/UPDATE).
-     */
     public void saveUserAsync(User user) {
         String sql = "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
@@ -111,9 +102,7 @@ public class UserManager {
                 "name=VALUES(name), ip=VALUES(ip), last_join=VALUES(last_join), last_quit=VALUES(last_quit), " +
                 "last_message_from=VALUES(last_message_from), teleport_toggle=VALUES(teleport_toggle), msg_toggle=VALUES(msg_toggle), social_spy=VALUES(social_spy)";
 
-        // Dla SQLite nie ma ON DUPLICATE KEY UPDATE – fallback:
         if (db.getType().equals("sqlite")) {
-            // Najpierw próbujemy UPDATE, potem jeśli 0 – INSERT
             String updateSql = "UPDATE users SET name=?, ip=?, last_join=?, last_quit=?, last_message_from=?, teleport_toggle=?, msg_toggle=?, social_spy=? WHERE uuid=?";
             db.updateAsync(updateSql,
                     user.getName(),
@@ -127,7 +116,6 @@ public class UserManager {
                     user.getUuid().toString()
             ).thenCompose(rows -> {
                 if (rows > 0) return CompletableFuture.completedFuture(rows);
-                // Insert
                 String insertSql = "INSERT INTO users (uuid, name, ip, first_join, last_join, last_quit, last_message_from, teleport_toggle, msg_toggle, social_spy) VALUES (?,?,?,?,?,?,?,?,?,?)";
                 return db.updateAsync(insertSql,
                         user.getUuid().toString(),
@@ -183,9 +171,7 @@ public class UserManager {
     public void saveAllSyncOnShutdown() {
         for (User user : cache.values()) {
             user.updateLastQuit();
-            // użycie sync: dla prostoty tutaj możesz wywołać zwykły updateSync
             if (db.getType().equals("sqlite")) {
-                // jak wyżej – fallback dla sqlite
                 String updateSql = "UPDATE users SET name=?, ip=?, last_join=?, last_quit=?, last_message_from=?, teleport_toggle=?, msg_toggle=?, social_spy=? WHERE uuid=?";
                 db.executeUpdate(updateSql,
                         user.getName(),

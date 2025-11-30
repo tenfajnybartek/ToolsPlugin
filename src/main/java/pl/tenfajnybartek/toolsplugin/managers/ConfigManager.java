@@ -40,7 +40,7 @@ public class ConfigManager {
 
     public String getPrefix() {
         if (!isPrefixEnabled()) {
-            return ""; // prefix wyłączony
+            return "";
         }
         return config.getString("settings.prefix", "&8[&6ToolsPlugin&8] &r");
     }

@@ -28,11 +28,6 @@ public class CommandManager {
         this.commandMap = getCommandMap();
     }
 
-
-
-    /**
-     * Rejestruje komendę (metoda instancyjna)
-     */
     public void registerCommand(BaseCommand baseCommand) {
         if (commandMap == null) {
             plugin.getLogger().severe("Nie można zarejestrować komendy: CommandMap jest null!");
@@ -43,15 +38,10 @@ public class CommandManager {
 
         PluginCommand command = new PluginCommand(baseCommand, plugin);
         commandMap.register(plugin.getName().toLowerCase(), command);
-
-        plugin.getLogger().info("Zarejestrowano komendę: /" + baseCommand.getName());
     }
 
 
 
-    /**
-     * Statyczna metoda do rejestracji komend
-     */
     public static void register(BaseCommand baseCommand) {
         if (instance == null) {
             throw new IllegalStateException("CommandManager nie został zainicjalizowany! Upewnij się, że tworzysz instancję w onEnable().");
@@ -60,9 +50,6 @@ public class CommandManager {
     }
 
 
-    /**
-     * Pobiera instancję CommandManagera
-     */
     public static CommandManager getInstance() {
         return instance;
     }
@@ -118,7 +105,6 @@ public class CommandManager {
                 return baseCommand.execute(sender, args);
             } catch (Exception e) {
                 var lm = ToolsPlugin.getInstance().getLanguageManager();
-                // Możesz później dodać klucz core.command-error
                 sender.sendMessage(ColorUtils.colorize("&cWystąpił błąd podczas wykonywania komendy!"));
                 plugin.getLogger().severe("Błąd w komendzie /" + baseCommand.getName() + ":");
                 e.printStackTrace();

@@ -27,18 +27,14 @@ public class MuteListener implements Listener {
     }
 
     @EventHandler
-    // Tłumienie ostrzeżenia o użyciu przestarzałego zdarzenia AsyncPlayerChatEvent
     @SuppressWarnings("deprecation")
     public void onAsyncPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
 
-        // Krok 1: Anuluj zdarzenie natychmiast
         event.setCancelled(true);
 
-        // Krok 2: Wykonaj asynchroniczną operację odczytu z DB
         CompletableFuture<Optional<MuteRecord>> future = muteManager.getActiveMute(player.getUniqueId());
 
-        // Krok 3: Przetwórz wynik, wracając na wątek główny
         future.thenAccept(optionalMute -> {
 
             Bukkit.getScheduler().runTask(plugin, () -> {
@@ -50,25 +46,20 @@ public class MuteListener implements Listener {
                 if (optionalMute.isPresent()) {
                     MuteRecord activeMute = optionalMute.get();
 
-                    // Wyciszony: wysyłamy tylko wiadomość o mutowaniu.
                     player.sendMessage(activeMute.getMuteMessage());
 
                 } else {
-                    // NIE wyciszony: przywracamy zdarzenie.
                     event.setCancelled(false);
                 }
             });
         }).exceptionally(ex -> {
-            // Obsługa błędów DB w wątku asynchronicznym
             ToolsPlugin.getInstance().getLogger().log(Level.SEVERE,
                     "Błąd DB podczas sprawdzania muta dla " + player.getName(), ex);
 
-            // Wracamy na wątek główny, aby poinformować gracza o błędzie
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (player.isOnline()) {
                     player.sendMessage(ColorUtils.toComponent("&cWystąpił błąd podczas sprawdzania statusu wyciszenia. Spróbuj ponownie."));
                 }
-                // Pozwalamy na wysłanie wiadomości.
                 event.setCancelled(false);
             });
             return null;

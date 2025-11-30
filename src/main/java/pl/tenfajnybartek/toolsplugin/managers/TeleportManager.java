@@ -35,7 +35,6 @@ public class TeleportManager {
         this.tpaRequests = new HashMap<>();
     }
 
-    // Teleport z countdownem na ActionBar
     public void teleport(Player player, Location destination, String successMessage) {
         int delay = configManager.getTeleportDelay();
 
@@ -181,7 +180,6 @@ public class TeleportManager {
             }
         }.runTaskLater(plugin, expirationTime);
 
-        // Persistent TPA info (opcjonalnie)
         if (actionBarManager != null) {
             actionBarManager.setPersistent(target, "tpa",
                     ColorUtils.toComponent("&eTPA od &6" + sender.getName() + " &7(/tpaccept /tpadeny)"));

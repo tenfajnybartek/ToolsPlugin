@@ -61,18 +61,15 @@ public abstract class BaseCommand {
         return (Player) sender;
     }
 
-    // Wysyłanie wiadomości z kolorami &
     protected void sendMessage(CommandSender sender, String message) {
         sender.sendMessage(ColorUtils.colorize(message));
     }
 
-    // Wysyłanie wiadomości z MiniMessage
     protected void sendMiniMessage(CommandSender sender, String message) {
         Component component = ColorUtils.miniMessage(message);
         sender.sendMessage(component);
     }
 
-    // Wysyłanie komponentu bezpośrednio
     protected void sendComponent(CommandSender sender, Component component) {
         sender.sendMessage(component);
     }

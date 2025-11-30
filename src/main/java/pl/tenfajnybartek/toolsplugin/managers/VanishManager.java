@@ -26,47 +26,27 @@ public class VanishManager {
     private final ActionBarManager actionBarManager;
     private final Set<UUID> vanished = ConcurrentHashMap.newKeySet();
 
-    // Konfigurowalne (możesz przenieść do configu)
     private final boolean giveInvisibilityEffect = true;
     private final boolean giveFlightIfAllowed = true;
     private final boolean blockItemPickup = true;
     private final boolean hideJoinQuitMessages = true;
     private final boolean preventMobTarget = true;
 
-    // Z configu (opcjonalnie) – jeśli nie istnieją wpisy, użyje domyślnych
     private final boolean vanishAbEnabled;
     private final String vanishText;
 
-    // Klucz w ActionBarManager
     private static final String VANISH_KEY = "vanish";
 
     public VanishManager(JavaPlugin plugin, ActionBarManager actionBarManager) {
         this.plugin = plugin;
         this.actionBarManager = actionBarManager;
 
-        // Pobieranie ustawień z config.yml (jeśli istnieją)
         this.vanishAbEnabled = plugin.getConfig().getBoolean("actionbar.vanish.enabled", true);
         this.vanishText = plugin.getConfig().getString("actionbar.vanish.text", "&a&lJESTEŚ NIEWIDZIALNY!");
 
-        // Pin persistent (jeśli actionbar włączony)
         if (actionBarManager != null && vanishAbEnabled) {
             actionBarManager.pinPersistent(VANISH_KEY);
         }
-
-        // OPCJONALNY fallback – gdyby inny plugin nadpisywał co tick i nawet pin nie wystarcza.
-        // Odkomentuj jeśli nadal znika po zmianach:
-        /*
-        if (actionBarManager != null && vanishAbEnabled) {
-            Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-                for (UUID id : vanished) {
-                    Player p = Bukkit.getPlayer(id);
-                    if (p != null && p.isOnline()) {
-                        actionBarManager.forceRefresh(p);
-                    }
-                }
-            }, 100L, 100L); // co 5 sekund wymusza refresh
-        }
-        */
     }
 
     public boolean isVanished(Player player) {
@@ -88,11 +68,10 @@ public class VanishManager {
             vanished.add(player.getUniqueId());
             applyEffects(player);
             hideFromOthers(player);
-            player.sendMessage(ColorUtils.colorize("&8[&cTools&8] &aJesteś teraz &ew ukryciu&a."));
+            player.sendMessage(ColorUtils.colorize("&aJesteś teraz &ew ukryciu&a."));
 
             if (actionBarManager != null && vanishAbEnabled) {
                 actionBarManager.setPersistent(player, VANISH_KEY, ColorUtils.toComponent(vanishText));
-                // Na wszelki wypadek ponownie pin
                 actionBarManager.pinPersistent(VANISH_KEY);
             }
 
@@ -100,18 +79,17 @@ public class VanishManager {
             showToOthers(player);
             removeEffects(player);
             vanished.remove(player.getUniqueId());
-            player.sendMessage(ColorUtils.colorize("&8[&cTools&8] &cNie jesteś już ukryty."));
+            player.sendMessage(ColorUtils.colorize("&cNie jesteś już ukryty."));
 
             if (actionBarManager != null) {
                 actionBarManager.removePersistent(player, VANISH_KEY);
-                // Jeśli chcesz odpiąć globalnie (tylko gdy naprawdę nikt vanish nie używa):
                 if (vanished.isEmpty()) {
                     actionBarManager.unpinPersistent(VANISH_KEY);
                 }
             }
 
         } else {
-            player.sendMessage(ColorUtils.colorize("&8[&cTools&8] &7Stan bez zmian (&e" + (vanish ? "ukryty" : "widoczny") + "&7)."));
+            player.sendMessage(ColorUtils.colorize("&7Stan bez zmian (&e" + (vanish ? "ukryty" : "widoczny") + "&7)."));
         }
     }
 
@@ -155,14 +133,12 @@ public class VanishManager {
     }
 
     public void syncOnJoin(Player joining) {
-        // Ukryj już niewidzialnych przed nowym graczem jeśli brak uprawnień do ich widzenia
         for (UUID uuid : vanished) {
             Player v = Bukkit.getPlayer(uuid);
             if (v != null && !joining.hasPermission(PERM_SEE)) {
                 joining.hidePlayer(plugin, v);
             }
         }
-        // Ustaw actionbar jeśli sam jest vanished
         if (isVanished(joining) && actionBarManager != null && vanishAbEnabled) {
             actionBarManager.setPersistent(joining, VANISH_KEY, ColorUtils.toComponent(vanishText));
             actionBarManager.pinPersistent(VANISH_KEY);

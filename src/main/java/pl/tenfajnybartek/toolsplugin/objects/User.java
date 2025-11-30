@@ -15,12 +15,9 @@ public class User {
     private UUID lastMessageFrom;
     private boolean teleportToggle;
 
-    // --- POLA DLA SYSTEMU WIADOMOŚCI ---
     private boolean msgToggle;
     private boolean socialSpy;
-    // ----------------------------------------
 
-    // KONSTRUKTOR A: Dla NOWEGO gracza (3 argumenty)
     public User(UUID uuid, String name, String ip) {
         this.uuid = uuid;
         this.name = name;
@@ -31,12 +28,10 @@ public class User {
         this.lastMessageFrom = null;
         this.teleportToggle = true;
 
-        // Domyślne wartości dla nowych pól
         this.msgToggle = true;
         this.socialSpy = false;
     }
 
-    // KONSTRUKTOR B: Dla ładowania z bazy (ZAKTUALIZOWANY - DODANE WSZYSTKIE POLA)
     public User(UUID uuid, String name, String ip, long firstJoin, long lastJoin, long lastQuit, UUID lastMessageFrom, boolean teleportToggle,
                 boolean msgToggle, boolean socialSpy) {
         this.uuid = uuid;
@@ -48,12 +43,10 @@ public class User {
         this.lastMessageFrom = lastMessageFrom;
         this.teleportToggle = teleportToggle;
 
-        // Ustawianie nowych pól
         this.msgToggle = msgToggle;
         this.socialSpy = socialSpy;
     }
 
-    // Gettery i Settery (BEZ ZMIAN)
 
     public UUID getUuid() {
         return uuid;
@@ -127,33 +120,18 @@ public class User {
         this.socialSpy = socialSpy;
     }
 
-    // --- Metody pomocnicze (ZAKTUALIZOWANE) ---
-
-    /**
-     * Zwraca obiekt Player, jeśli gracz jest obecnie online.
-     */
     public Player getPlayer() {
         return Bukkit.getPlayer(uuid);
     }
 
-    /**
-     * Sprawdza, czy gracz jest online.
-     * @return true, jeśli getPlayer() zwróci nie-null.
-     */
     public boolean isOnline() {
         return getPlayer() != null;
     }
 
-    /**
-     * Aktualizuje last join na obecny czas
-     */
     public void updateLastJoin() {
         this.lastJoin = System.currentTimeMillis();
     }
 
-    /**
-     * Aktualizuje last quit na obecny czas
-     */
     public void updateLastQuit() {
         this.lastQuit = System.currentTimeMillis();
     }

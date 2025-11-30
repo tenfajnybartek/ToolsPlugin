@@ -19,7 +19,6 @@ public class MuteRecord {
     private final LocalDateTime expireTime; // null = permanentny
     private boolean active;
 
-    // Konstruktor nowego muta
     public MuteRecord(UUID targetUuid, String targetName, UUID muterUuid, String muterName,
                       String reason, LocalDateTime muteTime, LocalDateTime expireTime) {
         this.id = -1;
@@ -33,7 +32,6 @@ public class MuteRecord {
         this.active = true;
     }
 
-    // Konstruktor z bazy
     public MuteRecord(int id, UUID targetUuid, String targetName, UUID muterUuid, String muterName,
                       String reason, LocalDateTime muteTime, LocalDateTime expireTime, boolean active) {
         this.id = id;
@@ -52,7 +50,7 @@ public class MuteRecord {
     }
 
     public boolean hasExpired() {
-        if (!active) return false;          // jeśli już ręcznie dezaktywowany, nie traktuj jako 'wygasły'
+        if (!active) return false;
         if (isPermanent()) return false;
         return expireTime.isBefore(LocalDateTime.now());
     }
@@ -71,7 +69,6 @@ public class MuteRecord {
         this.active = active;
     }
 
-    // Pozostały czas w sekundach (-1 dla permanentnego, 0 gdy już wygasł / nieaktywny)
     public long getRemainingSeconds() {
         if (!isActive()) return 0;
         if (isPermanent()) return -1;
@@ -82,7 +79,6 @@ public class MuteRecord {
         return TimeUtils.getMuteMessage(this);
     }
 
-    // Gettery
     public int getId() { return id; }
     public UUID getTargetUuid() { return targetUuid; }
     public String getTargetName() { return targetName; }

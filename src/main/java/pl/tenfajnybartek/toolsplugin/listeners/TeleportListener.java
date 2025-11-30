@@ -21,9 +21,6 @@ public class TeleportListener implements Listener {
         this.configManager = configManager;
     }
 
-    /**
-     * Anuluje teleportację, gdy gracz zmieni swoją pozycję.
-     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
         if (!configManager.cancelTeleportOnMove()) {
@@ -39,16 +36,11 @@ public class TeleportListener implements Listener {
         Location from = event.getFrom();
         Location to = event.getTo();
 
-        // Użycie distanceSquared() do sprawdzenia zmiany pozycji w świecie.
-        // Jeśli dystans > 0.0, oznacza to, że X, Y lub Z się zmieniły (ruch), ignorując obrót głowy.
         if (to != null && from.distanceSquared(to) > 0.0) {
             teleportManager.cancelTeleport(player, "Poruszyłeś się");
         }
     }
 
-    /**
-     * Anuluje teleportację, gdy gracz otrzyma obrażenia.
-     */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerDamage(EntityDamageEvent event) {
         if (!configManager.cancelTeleportOnDamage()) {
@@ -64,9 +56,6 @@ public class TeleportListener implements Listener {
         }
     }
 
-    /**
-     * Anuluje teleportację, gdy gracz wyjdzie z serwera.
-     */
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();

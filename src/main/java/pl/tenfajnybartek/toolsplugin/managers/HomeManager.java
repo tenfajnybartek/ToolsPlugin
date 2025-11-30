@@ -22,7 +22,7 @@ public class HomeManager {
         this.plugin = plugin;
         this.configManager = configManager;
         this.db = dbManager;
-        ensureTable(); // Tworzenie tabeli (DatabaseManager też tworzy, ale double-safe)
+        ensureTable();
     }
 
     private void ensureTable() {
@@ -53,10 +53,6 @@ public class HomeManager {
                 ")";
         db.executeUpdate(sql);
     }
-
-    /**
-     * Ładuje wszystkie home'y danego gracza asynchronicznie do cache.
-     */
     public CompletableFuture<Map<String, Location>> loadPlayerHomesAsync(UUID ownerUuid) {
         return db.queryAsync(
                 "SELECT home_name, world_name, x, y, z, yaw, pitch FROM " + TABLE + " WHERE owner_uuid = ?",
@@ -72,7 +68,6 @@ public class HomeManager {
                 },
                 ownerUuid.toString()
         ).thenApply(map -> {
-            // Aktualizacja cache na głównym wątku
             Bukkit.getScheduler().runTask(plugin, () -> {
                 cache.put(ownerUuid, map);
             });
@@ -80,10 +75,6 @@ public class HomeManager {
         });
     }
 
-    /**
-     * Tworzy lub aktualizuje home gracza.
-     * @return true jeśli operacja zakończyła się powodzeniem.
-     */
     public CompletableFuture<Boolean> setHomeAsync(Player player, String name, Location location) {
         UUID uuid = player.getUniqueId();
         String key = name.toLowerCase();
@@ -99,7 +90,6 @@ public class HomeManager {
         String updateSql = "UPDATE " + TABLE + " SET world_name=?, x=?, y=?, z=?, yaw=?, pitch=? WHERE owner_uuid=? AND home_name=?";
         String insertSql = "INSERT INTO " + TABLE + " (owner_uuid, home_name, world_name, x, y, z, yaw, pitch) VALUES (?,?,?,?,?,?,?,?)";
 
-        // Najpierw próba update, jeśli brak – insert.
         return db.updateAsync(updateSql,
                 location.getWorld().getName(),
                 location.getX(),
@@ -111,11 +101,9 @@ public class HomeManager {
                 key
         ).thenCompose(rows -> {
             if (rows > 0) {
-                // zaktualizowano
                 Bukkit.getScheduler().runTask(plugin, () -> putInCache(uuid, key, location));
                 return CompletableFuture.completedFuture(true);
             }
-            // Insert
             return db.updateAsync(insertSql,
                     uuid.toString(),
                     key,
@@ -153,7 +141,6 @@ public class HomeManager {
         });
     }
 
-    // ================== Cache & Helpers ==================
 
     private Location toLocation(ResultSet rs) throws SQLException {
         String world = rs.getString("world_name");

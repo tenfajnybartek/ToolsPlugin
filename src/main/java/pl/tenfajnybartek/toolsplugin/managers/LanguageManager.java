@@ -37,7 +37,6 @@ public class LanguageManager {
 
     private void buildCache() {
         cache.clear();
-        // Pobieramy tylko sekcję 'core' bo na razie mamy minimalny plik
         if (yaml.getConfigurationSection("core") != null) {
             for (String k : yaml.getConfigurationSection("core").getKeys(false)) {
                 cache.put("core." + k, yaml.getString("core." + k, ""));
@@ -49,7 +48,6 @@ public class LanguageManager {
         try { yaml.save(langFile); } catch (IOException ignored) {}
     }
 
-    // Surowa wartość (bez kolorowania)
     public String raw(String key) {
         String val = cache.get(key);
         if (val == null) {
@@ -62,7 +60,6 @@ public class LanguageManager {
         return val;
     }
 
-    // Kolorowana wartość z & + zastępowanie placeholderów {NAME}
     public String get(String key, Map<String,String> placeholders) {
         String base = raw(key);
         if (placeholders != null) {
@@ -77,20 +74,17 @@ public class LanguageManager {
         return get(key, null);
     }
 
-    // Prefix – jeśli w config jest prefix-enabled=false zwróci pusty String
     public String getPrefix() {
         boolean enabled = plugin.getConfig().getBoolean("settings.prefix-enabled", true);
         if (!enabled) return "";
         return ColorUtils.colorize(raw("core.prefix"));
     }
 
-    // Formatowanie komunikatu correct-usage
     public String formatUsage(String usage) {
         String msg = raw("core.correct-usage").replace("{USAGE}", usage);
         return ColorUtils.colorize(getPrefix() + msg);
     }
     public String getNoPermission(String permission) {
-        // {PERMISSION} placeholder
         String base = raw("core.no-permission").replace("{PERMISSION}", permission);
         return ColorUtils.colorize(getPrefix() + base);
     }

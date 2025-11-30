@@ -9,12 +9,6 @@ import pl.tenfajnybartek.toolsplugin.utils.ColorUtils;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * ActionBarManager z obsługą pinned persistent:
- *  - pinnedMessages: klucze, które są wysyłane KAŻDYM cyklem (np. vanish)
- *  - zwykłe persistent + ephemeral z priorytetami
- *  - heartbeat wciąż działa dla zwykłych persistent, ale pinned ignoruje warunek
- */
 public class ActionBarManager {
 
     private final Plugin plugin;
@@ -29,7 +23,6 @@ public class ActionBarManager {
     private final int noEphemeralHeartbeatTicks;
     private final Component separatorComponent;
 
-    // Zestaw kluczy persistent, które mają być “przypięte”
     private final Set<String> pinnedKeys = new HashSet<>();
 
     public ActionBarManager(Plugin plugin,
@@ -54,7 +47,6 @@ public class ActionBarManager {
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, updateIntervalTicks, updateIntervalTicks);
     }
 
-    // API persistent
     public void setPersistent(Player player, String key, Component message) {
         PlayerActionBarState st = states.computeIfAbsent(player.getUniqueId(), u -> new PlayerActionBarState());
         st.persistentMessages.put(key, message);
@@ -85,7 +77,6 @@ public class ActionBarManager {
         }
     }
 
-    // Pin / Unpin
     public void pinPersistent(String key) {
         pinnedKeys.add(key);
     }
@@ -94,7 +85,6 @@ public class ActionBarManager {
         pinnedKeys.remove(key);
     }
 
-    // Ephemeral
     public void pushEphemeral(Player player, Component message, int durationTicks, ActionPriority priority) {
         PlayerActionBarState st = states.computeIfAbsent(player.getUniqueId(), u -> new PlayerActionBarState());
         long expireAt = System.currentTimeMillis() + (durationTicks * 50L);
@@ -138,7 +128,6 @@ public class ActionBarManager {
             if (resendAlways) {
                 shouldSend = true;
             } else if (anyPinnedPresent) {
-                // Jeśli mamy pinned – wysyłamy ZAWSZE (agresywny tryb tylko dla pinned)
                 shouldSend = true;
             } else if (st.force) {
                 shouldSend = true;
@@ -196,7 +185,6 @@ public class ActionBarManager {
         return result;
     }
 
-    // Struktury
     private static class PlayerActionBarState {
         Map<String, Component> persistentMessages = new HashMap<>();
         List<EphemeralMessage> ephemeralMessages = new ArrayList<>();

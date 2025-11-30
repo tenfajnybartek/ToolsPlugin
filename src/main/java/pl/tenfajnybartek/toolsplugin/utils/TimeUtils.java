@@ -16,9 +16,6 @@ public class TimeUtils {
     private static final MiniMessage mm = MiniMessage.miniMessage();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // =========================================================================
-    // Parsowanie ciągów czasu (1h, 30m, 15d, perm)
-    // =========================================================================
     public static LocalDateTime parseTime(String timeString) {
         if (timeString == null || timeString.equalsIgnoreCase("perm") || timeString.equalsIgnoreCase("permanent")) {
             return null;
@@ -36,23 +33,17 @@ public class TimeUtils {
                 case "d": durationSeconds += value * 86400; break;
                 case "w": durationSeconds += value * 604800; break;
                 case "y": durationSeconds += value * 31536000; break;
-                default: return null; // nieznana jednostka => null
+                default: return null;
             }
         }
         if (durationSeconds <= 0) return null;
         return LocalDateTime.now().plusSeconds(durationSeconds);
     }
 
-    // =========================================================================
-    // Formatowanie daty i czasu
-    // =========================================================================
     public static String formatDateTime(LocalDateTime dateTime) {
         return dateTime == null ? "N/A" : dateTime.format(DATE_FORMATTER);
     }
 
-    // =========================================================================
-    // Formatowanie pozostałego czasu (Duration/LocalDateTime)
-    // =========================================================================
     public static String formatDuration(Duration duration) {
         if (duration == null || duration.isZero() || duration.isNegative()) return "Wygasł";
         long seconds = duration.getSeconds();
@@ -78,9 +69,6 @@ public class TimeUtils {
         return formatDuration(Duration.between(LocalDateTime.now(), expireTime));
     }
 
-    // =========================================================================
-    // Wiadomości dla Ban/Mute
-    // =========================================================================
     public static Component getBanMessage(BanRecord record) {
         if (record == null) return mm.deserialize("<red>Błąd danych bana.</red>");
         String expires = record.isPermanent() ? "<red>permanentnie</red>" : "<yellow>" + formatDuration(record.getExpireTime()) + "</yellow>";

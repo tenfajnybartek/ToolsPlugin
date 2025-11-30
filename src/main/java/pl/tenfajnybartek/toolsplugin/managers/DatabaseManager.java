@@ -13,7 +13,6 @@ import java.util.logging.Level;
 
 public class DatabaseManager {
 
-    // Mapper funkcyjny (używany w starych fragmentach)
     public interface ResultSetMapper<T> {
         T map(ResultSet rs) throws SQLException;
     }
@@ -34,7 +33,6 @@ public class DatabaseManager {
     private Connection sqliteConnection;
     private boolean disabled = false;
 
-    // Dedykowany executor do zapytań DB
     private final ExecutorService dbExecutor =
             new ThreadPoolExecutor(
                     2,
@@ -66,15 +64,12 @@ public class DatabaseManager {
         setupBackend();
         if (!disabled) {
             createTables();
-            migrateUsersTableIfNeeded(); // automatyczna migracja brakujących kolumn users
+            migrateUsersTableIfNeeded();
         } else {
             plugin.getLogger().severe("Baza danych jest wyłączona – funkcje zależne od DB nie będą działać.");
         }
     }
 
-    // ---------------------------------------------------------------
-    // Pobieranie wartości z configu
-    // ---------------------------------------------------------------
     private String getCfgString(String path, String def) {
         return plugin.getConfig().getString(path, def);
     }
@@ -83,9 +78,6 @@ public class DatabaseManager {
         return plugin.getConfig().getInt(path, def);
     }
 
-    // ---------------------------------------------------------------
-    // Walidacja podstawowej konfiguracji
-    // ---------------------------------------------------------------
     private void validateConfig() {
         if (!type.equals("mysql") && !type.equals("sqlite")) {
             plugin.getLogger().severe("Nieobsługiwany database.type: " + type + " (dozwolone: mysql, sqlite)");
@@ -96,9 +88,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Inicjalizacja backendu
-    // ---------------------------------------------------------------
     private void setupBackend() {
         if (type.equals("mysql")) {
             setupMySql();
@@ -177,9 +166,6 @@ public class DatabaseManager {
                 + "&serverTimezone=UTC";
     }
 
-    // ---------------------------------------------------------------
-    // Tworzenie tabel (bazowa wersja)
-    // ---------------------------------------------------------------
     private void createTables() {
         if (disabled) return;
         if (type.equals("mysql")) {
@@ -342,9 +328,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Migracja brakujących kolumn w users (MySQL)
-    // ---------------------------------------------------------------
     private void migrateUsersTableIfNeeded() {
         if (disabled || !type.equals("mysql")) return;
 
@@ -387,9 +370,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Publiczny dostęp do połączenia
-    // ---------------------------------------------------------------
     public Connection getConnection() throws SQLException {
         if (disabled) throw new SQLException("Database disabled (initialization failed).");
         if (type.equals("mysql")) {
@@ -403,9 +383,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Metody sync
-    // ---------------------------------------------------------------
     public int executeUpdate(String sql, Object... params) {
         if (disabled) {
             plugin.getLogger().warning("executeUpdate skipped (DB disabled): " + sql);
@@ -467,9 +444,6 @@ public class DatabaseManager {
         }, params);
     }
 
-    // ---------------------------------------------------------------
-    // Metody async
-    // ---------------------------------------------------------------
     public CompletableFuture<Integer> updateAsync(String sql, Object... params) {
         return CompletableFuture.supplyAsync(() -> executeUpdate(sql, params), dbExecutor);
     }
@@ -489,9 +463,6 @@ public class DatabaseManager {
         return CompletableFuture.supplyAsync(() -> executeQueryOptional(sql, mapper, params), dbExecutor);
     }
 
-    // ---------------------------------------------------------------
-    // Parametry
-    // ---------------------------------------------------------------
     private void bindParams(PreparedStatement ps, Object... params) throws SQLException {
         if (params == null) return;
         for (int i = 0; i < params.length; i++) {
@@ -499,9 +470,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Test połączenia
-    // ---------------------------------------------------------------
     public boolean testConnection() {
         if (disabled) return false;
         try (Connection conn = getConnection()) {
@@ -512,9 +480,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Zamknięcie
-    // ---------------------------------------------------------------
     public void disconnect() {
         if (type.equals("mysql")) {
             if (mysqlDataSource != null && !mysqlDataSource.isClosed()) {
@@ -542,9 +507,6 @@ public class DatabaseManager {
         }
     }
 
-    // ---------------------------------------------------------------
-    // Gettery / Status
-    // ---------------------------------------------------------------
     public boolean isConnected() {
         if (disabled) return false;
         if (type.equals("mysql")) {

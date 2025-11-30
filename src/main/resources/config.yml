@@ -29,31 +29,6 @@ chat:
       permission: "tfbhc.chat.format.vip"
       format: "&6[VIP] %player_name% &7>> &f%message%"
 
-cooldowns:
-  enabled: true
-  commands:
-    heal: 30
-    feed: 20
-    tp: 5
-    fly: 0
-    god: 0
-    gamemode: 0
-    kill: 10
-    suicide: 60
-    burn: 15
-    smite: 15
-    repair: 45
-    enchant: 10
-    hat: 5
-    workbench: 3
-    anvil: 3
-    top: 10
-    warp: 5
-    home: 10
-    back: 5
-    sethome: 3
-    delhome: 0
-
 teleport:
   safe-teleport: true
   delay: 3

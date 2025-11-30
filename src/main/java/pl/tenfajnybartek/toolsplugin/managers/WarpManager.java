@@ -71,7 +71,6 @@ public class WarpManager {
                 plugin.getLogger().log(Level.SEVERE, "Błąd podczas ładowania warpów!", e);
             }
 
-            // Bez NPE: loaded nigdy null
             synchronized (warps) {
                 warps.clear();
                 warps.putAll(loaded);

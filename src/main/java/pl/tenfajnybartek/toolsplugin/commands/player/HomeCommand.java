@@ -28,7 +28,6 @@ public class HomeCommand extends BaseCommand {
         Player player = getPlayer(sender);
         HomeManager homeManager = ToolsPlugin.getInstance().getHomeManager();
         TeleportManager teleportManager = ToolsPlugin.getInstance().getTeleportManager();
-        CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
         String homeName = args.length == 0 ? "home" : args[0].toLowerCase();
 

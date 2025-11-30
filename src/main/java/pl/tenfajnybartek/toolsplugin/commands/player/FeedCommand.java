@@ -18,7 +18,6 @@ public class FeedCommand extends BaseCommand {
 
     @Override
     public boolean execute(CommandSender sender, String[] args) {
-        CooldownManager cooldownManager = ToolsPlugin.getInstance().getCooldownManager();
 
         if (args.length == 0) {
             if (!isPlayer(sender)) {
